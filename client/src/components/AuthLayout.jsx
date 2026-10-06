@@ -4,7 +4,7 @@ import { useTheme } from '../context/ThemeContext.jsx';
 function ThemeButton() {
   const { theme, toggle } = useTheme();
   return (
-    <button onClick={toggle} aria-label={theme === 'dark' ? 'Tema terang' : 'Tema gelap'} title={theme === 'dark' ? 'Tema terang' : 'Tema gelap'} className="icon-btn" style={{ position: 'absolute', top: 'calc(14px + env(safe-area-inset-top))', right: 14, zIndex: 10 }}>
+    <button onClick={toggle} aria-label={theme === 'dark' ? 'Tema terang' : 'Tema gelap'} title={theme === 'dark' ? 'Tema terang' : 'Tema gelap'} className="icon-btn auth-theme-btn">
       {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
@@ -12,17 +12,17 @@ function ThemeButton() {
 
 export default function AuthLayout({ title, subtitle, children }) {
   return (
-    <main style={{ minHeight: '100dvh', display: 'grid', position: 'relative' }}>
+    <main className="auth-shell">
       <ThemeButton />
       <div className="container auth-grid">
-        <div>
-          <p style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 22, letterSpacing: '-0.02em' }}>
-            DailyLog<span style={{ color: 'var(--green)' }}>.</span>
+        <div className="auth-hero">
+          <p className="auth-brand">
+            DailyLog<span className="auth-brand-dot">.</span>
           </p>
-          <h1 style={{ fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: 700, letterSpacing: '-0.03em', marginTop: 18 }}>
+          <h1 className="auth-title">
             Apa yang kamu selesaikan hari ini?
           </h1>
-          <p style={{ color: 'var(--muted)', marginTop: 14, maxWidth: '44ch' }}>
+          <p className="auth-desc">
             Catat kegiatan, pantau tugas dari kalender, dan lihat progresmu tersusun rapi seperti buku catatan pribadi.
           </p>
           <ul className="auth-points">
@@ -41,8 +41,8 @@ export default function AuthLayout({ title, subtitle, children }) {
           </ul>
         </div>
         <section className="auth-card">
-          <h2 style={{ fontSize: 24 }}>{title}</h2>
-          <p style={{ color: 'var(--muted)', marginTop: 6, marginBottom: 24 }}>{subtitle}</p>
+          <h2 className="auth-card-title">{title}</h2>
+          <p className="auth-card-sub">{subtitle}</p>
           {children}
         </section>
       </div>

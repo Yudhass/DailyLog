@@ -1,12 +1,30 @@
 import { Router } from 'express';
 import { Op } from 'sequelize';
 import {
-  Task, VALID_STATUSES, VALID_PRIORITIES, VALID_RECURRENCE, VALID_SOURCES, formatTags,
+  Task, VALID_STATUSES, VALID_PRIORITIES, VALID_RECURRENCE, VALID_SOURCES, formatTags, parseTags,
 } from '../db.js';
 import { authRequired } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authRequired);
+
+// Daftar tag yang pernah dipakai user (untuk autosuggest), diurut paling sering.
+router.get('/tags', async (req, res) => {
+  const rows = await Task.findAll({
+    where: { userId: req.user.id },
+    attributes: ['tags'],
+    raw: true,
+  });
+  const freq = {};
+  for (const r of rows) {
+    for (const t of parseTags(r.tags)) freq[t] = (freq[t] || 0) + 1;
+  }
+  const list = Object.entries(freq)
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+    .slice(0, 60);
+  res.json(list);
+});
 
 const PRIORITY_RANK = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 

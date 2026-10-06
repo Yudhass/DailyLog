@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { flushOutbox, isOnline, pendingCount, watchOnline } from '../offline/queue.js';
+import { useToast } from '../context/ToastContext.jsx';
 
 // F4 — Indikator status sinkronisasi offline.
 export default function SyncStatus() {
@@ -7,6 +8,7 @@ export default function SyncStatus() {
   const [pending, setPending] = useState(pendingCount());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const toast = useToast();
 
   useEffect(() => {
     const unwatch = watchOnline(setOnline);
@@ -18,6 +20,7 @@ export default function SyncStatus() {
         try {
           await flushOutbox();
           setPending(pendingCount());
+          toast.success('Antrean offline tersinkron.');
         } catch { /* tetap antre */ }
       }
     };
@@ -35,10 +38,14 @@ export default function SyncStatus() {
     try {
       const r = await flushOutbox();
       setPending(pendingCount());
-      setMsg(r.conflicts?.length ? `${r.conflicts.length} konflik (server lebih baru, ditahan)` : 'Tersinkron ✓');
+      const msg = r.conflicts?.length ? `${r.conflicts.length} konflik (server lebih baru, ditahan)` : 'Tersinkron ✓';
+      setMsg(msg);
+      if (r.conflicts?.length) toast.info(msg);
+      else toast.success('Semua antrean tersinkron.');
       window.location.reload();
     } catch {
       setMsg('Masih offline, tetap tersimpan lokal.');
+      toast.error('Masih offline, tetap tersimpan lokal.');
     } finally {
       setBusy(false);
     }

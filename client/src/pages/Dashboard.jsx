@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
 import TopBar from '../components/TopBar.jsx';
 import MonthCalendar from '../components/MonthCalendar.jsx';
@@ -7,6 +8,7 @@ import DayAgenda from '../components/DayAgenda.jsx';
 import TaskModal from '../components/TaskModal.jsx';
 import QuickAdd from '../components/QuickAdd.jsx';
 import SyncStatus from '../components/SyncStatus.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import { bulanTahun, dateKey, formatTanggal, keyOfTask } from '../utils/date.js';
 import { sortByPriority } from '../components/TaskMeta.jsx';
 
@@ -30,21 +32,20 @@ export default function Dashboard() {
   const [view, setView] = useState('month');
   const [modal, setModal] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saveError, setSaveError] = useState('');
   const [filter, setFilter] = useState('ALL');
+  const toast = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/tasks', { params: { month: cursor.getMonth() + 1, year: cursor.getFullYear() } });
       setTasks(data);
-      setSaveError('');
     } catch {
-      setSaveError('Gagal memuat catatan');
+      toast.error('Gagal memuat catatan');
     } finally {
       setLoading(false);
     }
-  }, [cursor]);
+  }, [cursor, toast]);
 
   useEffect(() => {
     if (!selected) return;
@@ -86,25 +87,29 @@ export default function Dashboard() {
   }
 
   async function saveTask(payload) {
-    setSaveError('');
     try {
-      if (modal.task) await api.put(`/tasks/${modal.task.id}`, payload);
-      else await api.post('/tasks', payload);
+      if (modal.task) {
+        await api.put(`/tasks/${modal.task.id}`, payload);
+        toast.success('Catatan diperbarui.');
+      } else {
+        await api.post('/tasks', payload);
+        toast.success('Catatan ditambahkan.');
+      }
       setModal(null);
       await load();
     } catch (err) {
-      setSaveError(err.response?.data?.error || 'Catatan gagal disimpan. Coba lagi.');
+      toast.error(err.response?.data?.error || 'Catatan gagal disimpan. Coba lagi.');
     }
   }
 
   async function deleteTask(id) {
-    setSaveError('');
     try {
       await api.delete(`/tasks/${id}`);
       setModal(null);
+      toast.success('Catatan dihapus.');
       await load();
     } catch (err) {
-      setSaveError(err.response?.data?.error || 'Catatan gagal dihapus.');
+      toast.error(err.response?.data?.error || 'Catatan gagal dihapus.');
     }
   }
 
@@ -153,8 +158,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-        {saveError && <p role="alert" className="notice-error">{saveError}</p>}
-
         {view === 'month' && (
           <div className="layout">
             <div className="layout-cal">
@@ -170,6 +173,10 @@ export default function Dashboard() {
       </main>
 
       {modal && <TaskModal task={modal.task} defaultDate={selected} onClose={() => setModal(null)} onSave={saveTask} onDelete={deleteTask} />}
+
+      <button className="fab" onClick={() => setModal({ task: null })} aria-label="Tambah catatan">
+        <Plus size={24} weight="bold" />
+      </button>
     </>
   );
 }

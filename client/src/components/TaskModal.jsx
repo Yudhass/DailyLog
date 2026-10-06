@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { Trash } from '@phosphor-icons/react';
 import { STATUS, dateKey } from '../utils/date.js';
 import { inputStyle } from './form.jsx';
+import TagInput from './TagInput.jsx';
+import ConfirmDialog from './ConfirmDialog.jsx';
 
 export const PRIORITY = {
   HIGH: { label: 'Tinggi', color: '#dc2626', bg: '#fee2e2' },
@@ -36,6 +39,7 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
     estimatedMinutes: task?.estimatedMinutes || '',
   });
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
   function submit(e) {
@@ -108,10 +112,15 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
         </div>
         <label className="field">
           <span>Tag (pisahkan koma, cth: Kantor, Belajar)</span>
-          <input style={inputStyle} value={form.tags} onChange={set('tags')} placeholder="Kantor, Belajar" />
+          <TagInput
+            inputStyle={inputStyle}
+            value={form.tags}
+            onChange={(v) => setForm({ ...form, tags: v })}
+            placeholder="Kantor, Belajar"
+          />
         </label>
         {!task && (
-          <div className="field-grid">
+          <div className="field-grid-2">
             <label className="field">
               <span>Pengulangan</span>
               <select style={inputStyle} value={form.recurrence} onChange={set('recurrence')}>
@@ -128,7 +137,9 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
         )}
         <div className="modal-actions">
           {task ? (
-            <button type="button" onClick={() => onDelete(task.id)} className="danger-btn">Hapus</button>
+            <button type="button" onClick={() => setConfirmDelete(true)} className="icon-btn danger" aria-label={`Hapus ${task.title}`} title="Hapus">
+              <Trash size={17} />
+            </button>
           ) : <span />}
           <div className="modal-actions-right">
             <button type="button" onClick={onClose} className="pill-btn">Batal</button>
@@ -136,6 +147,16 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
           </div>
         </div>
       </form>
+      {confirmDelete && task && (
+        <ConfirmDialog
+          title="Hapus catatan?"
+          message={`"${task.title}" akan dihapus permanen dan tidak bisa dikembalikan.`}
+          confirmLabel="Hapus"
+          danger
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => { setConfirmDelete(false); onDelete(task.id); }}
+        />
+      )}
     </div>
   );
 }

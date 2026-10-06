@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Today from './pages/Today.jsx';
 import Report from './pages/Report.jsx';
 import Profile from './pages/Profile.jsx';
+import Notes from './pages/Notes.jsx';
 import SharedView from './pages/SharedView.jsx';
 import TabBar from './components/TabBar.jsx';
 import SidebarStatic from './components/SidebarStatic.jsx';
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/today" element={<Private><Today /></Private>} />
         <Route path="/report" element={<Private><Report /></Private>} />
         <Route path="/profile" element={<Private><Profile /></Private>} />
+        <Route path="/notes" element={<Private><Notes /></Private>} />
         <Route path="/s/:token" element={<SharedView />} />
       </Routes>
       {user && <TabBar />}

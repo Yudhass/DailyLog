@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Lightning } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
 import { saveOnlineFirst } from '../offline/queue.js';
+import { useToast } from '../context/ToastContext.jsx';
 import { STATUS } from '../utils/date.js';
 import { PRIORITY } from './TaskModal.jsx';
 import { inputStyle } from './form.jsx';
+import TagInput from './TagInput.jsx';
 
 // F1 — Quick Add bahasa natural. Shortcut Ctrl/Cmd+K, pratinjau editable, 1 klik simpan.
 export default function QuickAdd({ defaultDate, onSaved }) {
@@ -14,6 +16,7 @@ export default function QuickAdd({ defaultDate, onSaved }) {
   const [engine, setEngine] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const toast = useToast();
 
   useEffect(() => {
     const onKey = (e) => {
@@ -63,9 +66,13 @@ export default function QuickAdd({ defaultDate, onSaved }) {
       setOpen(false);
       setText('');
       setDraft(null);
+      if (queued) toast.info('Offline — tersimpan lokal, dikirim saat online.');
+      else toast.success('Catatan ditambahkan.');
       onSaved?.(queued);
     } catch (err) {
-      setError(err.response?.data?.error || 'Gagal menyimpan.');
+      const msg = err.response?.data?.error || 'Gagal menyimpan.';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -135,10 +142,10 @@ export default function QuickAdd({ defaultDate, onSaved }) {
                     </select>
                   </label>
                   <label className="field"><span>Tag (koma)</span>
-                    <input
-                      style={inputStyle}
+                    <TagInput
+                      inputStyle={inputStyle}
                       value={Array.isArray(draft.tags) ? draft.tags.join(', ') : draft.tags || ''}
-                      onChange={(e) => setDraft({ ...draft, tags: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+                      onChange={(v) => setDraft({ ...draft, tags: v.split(',').map((s) => s.trim()).filter(Boolean) })}
                     />
                   </label>
                 </div>

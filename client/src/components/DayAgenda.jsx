@@ -27,13 +27,13 @@ export default function DayAgenda({ dateStr, tasks, onAdd, onEdit }) {
             >
               <span className="task-row">
                 <strong style={{ fontSize: 15 }}>{t.title}</strong>
-                <span className="mono" style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-                  {t.startTime ? (t.endTime ? `${t.startTime} - ${t.endTime}` : t.startTime) : 'Seharian'}
-                </span>
               </span>
               {t.description && <span className="task-desc">{t.description}</span>}
               <TaskBadges task={t} />
               <TagList tags={t.tags} />
+              <span className="task-time mono">
+                {t.startTime ? (t.endTime ? `${t.startTime} - ${t.endTime}` : t.startTime) : 'Seharian'}
+              </span>
             </button>
           </li>
         ))}

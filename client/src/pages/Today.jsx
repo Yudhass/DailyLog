@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Flame, Sun } from '@phosphor-icons/react';
+import { Flame, Sun, PencilSimple, Trash, Plus } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
 import TopBar from '../components/TopBar.jsx';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import TaskModal from '../components/TaskModal.jsx';
 import QuickAdd from '../components/QuickAdd.jsx';
 import SyncStatus from '../components/SyncStatus.jsx';
 import { TaskBadges, TagList, sortByPriority } from '../components/TaskMeta.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import { dateKey, formatTanggal } from '../utils/date.js';
 
 const FILTERS = [
@@ -38,12 +40,13 @@ export default function Today() {
   const [date, setDate] = useState(todayKey);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [filter, setFilter] = useState('ALL');
   const [modal, setModal] = useState(null);
   const [streak, setStreak] = useState(0);
   const [reminder, setReminder] = useState(null);
   const [shareUrl, setShareUrl] = useState('');
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const toast = useToast();
 
   const isToday = date === todayKey();
 
@@ -52,13 +55,12 @@ export default function Today() {
     try {
       const { data } = await api.get('/tasks', { params: { date } });
       setTasks(data);
-      setError('');
     } catch {
-      setError('Gagal memuat catatan hari ini');
+      toast.error('Gagal memuat catatan hari ini');
     } finally {
       setLoading(false);
     }
-  }, [date]);
+  }, [date, toast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -86,47 +88,48 @@ export default function Today() {
   }, [tasks, filter]);
 
   async function saveTask(payload) {
-    setError('');
     try {
       const res = await (modal?.task
         ? api.put(`/tasks/${modal.task.id}`, payload)
         : api.post('/tasks', { ...payload, logDate: date }));
       setModal(null);
       // Tugas berulang mengembalikan array
-      if (Array.isArray(res.data)) setError('');
+      toast.success(modal?.task ? 'Catatan diperbarui.' : Array.isArray(res.data) ? 'Catatan berulang dibuat.' : 'Catatan ditambahkan.');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error || 'Catatan gagal disimpan. Coba lagi.');
+      toast.error(err.response?.data?.error || 'Catatan gagal disimpan. Coba lagi.');
     }
   }
 
   async function deleteTask(id) {
-    setError('');
     try {
       await api.delete(`/tasks/${id}`);
       setModal(null);
+      setPendingDelete(null);
+      toast.success('Catatan dihapus.');
       await load();
     } catch (err) {
-      setError(err.response?.data?.error || 'Catatan gagal dihapus.');
+      toast.error(err.response?.data?.error || 'Catatan gagal dihapus.');
     }
   }
 
   async function toggleDone(task) {
     try {
       await api.put(`/tasks/${task.id}`, { status: task.status === 'DONE' ? 'TODO' : 'DONE' });
+      toast.success(task.status === 'DONE' ? 'Ditandai belum selesai.' : 'Ditandai selesai ✓');
       await load();
     } catch {
-      setError('Gagal mengubah status.');
+      toast.error('Gagal mengubah status.');
     }
   }
 
   async function bagikanHariIni() {
-    setError('');
     try {
       const { data } = await api.post('/share', { scopeType: 'DAY', date });
       setShareUrl(`${location.origin}/s/${data.token}`);
+      toast.success('Link berbagi dibuat.');
     } catch {
-      setError('Gagal membuat link berbagi.');
+      toast.error('Gagal membuat link berbagi.');
     }
   }
 
@@ -237,9 +240,7 @@ export default function Today() {
             <div className="skel" style={{ height: 74 }} />
           </div>
         )}
-        {error && <p role="alert" className="notice-error">{error}</p>}
-
-        {!loading && !error && (
+        {!loading && (
           <section className="panel">
             <div className="panel-head">
               <h2 style={{ fontSize: 17 }}>Agenda {isToday ? 'hari ini' : 'tanggal ini'}</h2>
@@ -275,16 +276,20 @@ export default function Today() {
                             {t.title}
                           </strong>
                         </label>
-                        <span className="mono" style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-                          {t.startTime ? (t.endTime ? `${t.startTime} - ${t.endTime}` : t.startTime) : 'Seharian'}
-                        </span>
                       </span>
                       {t.description && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{t.description}</span>}
                       <TaskBadges task={t} />
                       <TagList tags={t.tags} />
                       <span style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-                        <button className="pill-btn" onClick={() => setModal({ task: t })}>Edit</button>
-                        <button className="danger-btn" onClick={() => deleteTask(t.id)}>Hapus</button>
+                        <button className="icon-btn" style={{ width: 34, height: 34 }} onClick={() => setModal({ task: t })} aria-label={`Edit ${t.title}`} title="Edit">
+                          <PencilSimple size={16} />
+                        </button>
+                        <button className="icon-btn danger" style={{ width: 34, height: 34 }} onClick={() => setPendingDelete(t)} aria-label={`Hapus ${t.title}`} title="Hapus">
+                          <Trash size={16} />
+                        </button>
+                      </span>
+                      <span className="task-time mono">
+                        {t.startTime ? (t.endTime ? `${t.startTime} - ${t.endTime}` : t.startTime) : 'Seharian'}
                       </span>
                     </div>
                   </li>
@@ -302,6 +307,21 @@ export default function Today() {
           onClose={() => setModal(null)}
           onSave={saveTask}
           onDelete={deleteTask}
+        />
+      )}
+
+      <button className="fab" onClick={() => setModal({ task: null })} aria-label="Tambah catatan">
+        <Plus size={24} weight="bold" />
+      </button>
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Hapus catatan?"
+          message={`"${pendingDelete.title}" akan dihapus permanen dan tidak bisa dikembalikan.`}
+          confirmLabel="Hapus"
+          danger
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => deleteTask(pendingDelete.id)}
         />
       )}
     </>

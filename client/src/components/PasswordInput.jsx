@@ -6,9 +6,9 @@ export default function PasswordInput({ value, onChange, autoComplete = 'current
   const [visible, setVisible] = useState(false);
 
   return (
-    <span style={{ position: 'relative', display: 'block' }}>
+    <span style={{ position: 'relative', display: 'block', minWidth: 0 }}>
       <input
-        style={{ ...inputStyle, paddingRight: 44 }}
+        style={{ ...inputStyle, paddingRight: 48 }}
         type={visible ? 'text' : 'password'}
         value={value}
         onChange={onChange}
@@ -25,13 +25,13 @@ export default function PasswordInput({ value, onChange, autoComplete = 'current
         style={{
           position: 'absolute',
           top: '50%',
-          right: 6,
+          right: 4,
           transform: 'translateY(-50%)',
           border: 'none',
           background: 'transparent',
           color: 'var(--muted)',
-          width: 34,
-          height: 34,
+          width: 40,
+          height: 40,
           display: 'grid',
           placeItems: 'center',
           borderRadius: 8,

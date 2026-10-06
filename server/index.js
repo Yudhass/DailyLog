@@ -14,6 +14,7 @@ import summaryRoutes from './routes/summaries.js';
 import chatLinkRoutes from './routes/chatlinks.js';
 import syncRoutes from './routes/sync.js';
 import pushRoutes from './routes/push.js';
+import notesRoutes from './routes/notes.js';
 import { handleTelegramUpdate, telegramEnabled } from './telegram.js';
 import { syncDb } from './db.js';
 
@@ -33,6 +34,7 @@ app.use('/api/summaries', summaryRoutes);
 app.use('/api/chat-links', chatLinkRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/notes', notesRoutes);
 
 // F3 webhook Telegram (verifikasi secret bila dikonfigurasi)
 app.post('/webhooks/telegram', async (req, res) => {

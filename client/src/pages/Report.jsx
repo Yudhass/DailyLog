@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Flame } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
 import TopBar from '../components/TopBar.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import { TaskBadges, TagList } from '../components/TaskMeta.jsx';
 import {
   akhirBulan, awalBulan, dateKey, formatRentang, formatTanggal,
@@ -56,7 +57,7 @@ export default function Report() {
   const [tasks, setTasks] = useState([]);
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const toast = useToast();
   const [shareUrl, setShareUrl] = useState('');
   const [sumStyle, setSumStyle] = useState('ringkas');
   const [summary, setSummary] = useState(null);
@@ -66,7 +67,6 @@ export default function Report() {
   useEffect(() => {
     let aktif = true;
     setLoading(true);
-    setError('');
     Promise.all([
       api.get('/tasks', { params: { from, to } }),
       api.get('/stats/overview', { params: { from, to } }),
@@ -76,10 +76,10 @@ export default function Report() {
         setTasks(t);
         setOverview(o);
       })
-      .catch(() => aktif && setError('Laporan gagal dimuat. Coba muat ulang.'))
+      .catch(() => aktif && toast.error('Laporan gagal dimuat. Coba muat ulang.'))
       .finally(() => aktif && setLoading(false));
     return () => { aktif = false; };
-  }, [from, to]);
+  }, [from, to, toast]);
 
   function applyPreset(id) {
     setPreset(id);
@@ -135,61 +135,63 @@ export default function Report() {
       .map((t) => [keyOfTask(t), `"${t.title.replace(/"/g, '""')}"`, t.status, t.priority || '', `"${(t.tags || '').replace(/"/g, '""')}"`, t.startTime || '', t.endTime || ''].join(','))
       .join('\n');
     downloadBlob(header + body, `laporan-dailylog-${from}-sd-${to}.csv`, 'text/csv;charset=utf-8');
-  }, [tasks, from, to]);
+    toast.success('CSV diunduh.');
+  }, [tasks, from, to, toast]);
 
   const onExportPdf = useCallback(async () => {
-    setError('');
     try {
       const { data } = await api.get('/export/pdf', { params: { from, to }, responseType: 'blob' });
       downloadBlob(data, `laporan-dailylog-${from}-sd-${to}.pdf`, 'application/pdf');
+      toast.success('PDF diunduh.');
     } catch {
-      setError('Gagal mengunduh PDF.');
+      toast.error('Gagal mengunduh PDF.');
     }
-  }, [from, to]);
+  }, [from, to, toast]);
 
   const onExportExcel = useCallback(async () => {
-    setError('');
     try {
       const { data } = await api.get('/export/excel', { params: { from, to }, responseType: 'blob' });
       downloadBlob(data, `laporan-dailylog-${from}-sd-${to}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      toast.success('Excel diunduh.');
     } catch {
-      setError('Gagal mengunduh Excel.');
+      toast.error('Gagal mengunduh Excel.');
     }
-  }, [from, to]);
+  }, [from, to, toast]);
 
   const onShare = useCallback(async () => {
-    setError('');
     try {
       const { data } = await api.post('/share', { scopeType: 'RANGE', dateFrom: from, dateTo: to, expiresInDays: 30 });
       setShareUrl(`${location.origin}/s/${data.token}`);
+      toast.success('Link berbagi dibuat.');
     } catch {
-      setError('Gagal membuat link berbagi.');
+      toast.error('Gagal membuat link berbagi.');
     }
-  }, [from, to]);
+  }, [from, to, toast]);
 
   const onSummary = useCallback(async () => {
     setSumBusy(true);
-    setError('');
     try {
       const { data } = await api.post('/summaries', { from, to, style: sumStyle });
       setSummary(data.summary);
       setSumCached(Boolean(data.cached));
+      toast.success(data.cached ? 'Ringkasan diambil dari cache.' : 'Ringkasan dibuat.');
     } catch (err) {
-      setError(err.response?.data?.error || 'Gagal membuat ringkasan.');
+      toast.error(err.response?.data?.error || 'Gagal membuat ringkasan.');
     } finally {
       setSumBusy(false);
     }
-  }, [from, to, sumStyle]);
+  }, [from, to, sumStyle, toast]);
 
   const onSummaryPdf = useCallback(async () => {
     if (!summary) return;
     try {
       const { data } = await api.get(`/summaries/${summary.id}/pdf`, { responseType: 'blob' });
       downloadBlob(data, `ringkasan-${from}-sd-${to}.pdf`, 'application/pdf');
+      toast.success('PDF ringkasan diunduh.');
     } catch {
-      setError('Gagal mengunduh PDF ringkasan.');
+      toast.error('Gagal mengunduh PDF ringkasan.');
     }
-  }, [summary, from, to]);
+  }, [summary, from, to, toast]);
 
   return (
     <>
@@ -235,7 +237,7 @@ export default function Report() {
               </p>
               <pre style={{ whiteSpace: 'pre-wrap', fontSize: 14, marginTop: 8 }}>{summary.content}</pre>
               <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                <button className="pill-btn" onClick={() => navigator.clipboard?.writeText(summary.content)}>Salin</button>
+                <button className="pill-btn" onClick={() => navigator.clipboard?.writeText(summary.content).then(() => toast.success('Ringkasan disalin.')).catch(() => toast.error('Gagal menyalin.'))}>Salin</button>
                 <button className="pill-btn" onClick={onSummaryPdf}>Unduh PDF</button>
               </div>
             </>
@@ -268,7 +270,6 @@ export default function Report() {
           </div>
         </section>
 
-        {error && <p role="alert" className="notice-error">{error}</p>}
         {loading && (
           <div className="skel-block" aria-label="Memuat laporan">
             <div className="skel" style={{ height: 92 }} />
@@ -413,13 +414,13 @@ export default function Report() {
                           <div className="task-card" style={{ cursor: 'default' }}>
                             <span className="task-row">
                               <strong style={{ fontSize: 15 }}>{t.title}</strong>
-                              <span className="mono" style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
-                                {t.startTime ? (t.endTime ? `${t.startTime} - ${t.endTime}` : t.startTime) : 'Seharian'}
-                              </span>
                             </span>
                             {t.description && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{t.description}</span>}
                             <TaskBadges task={t} />
                             <TagList tags={t.tags} />
+                            <span className="task-time mono">
+                              {t.startTime ? (t.endTime ? `${t.startTime} - ${t.endTime}` : t.startTime) : 'Seharian'}
+                            </span>
                           </div>
                         </li>
                       ))}

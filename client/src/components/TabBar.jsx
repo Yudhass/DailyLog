@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { CalendarBlank, Sun, ChartLineUp } from '@phosphor-icons/react';
+import { CalendarBlank, Sun, ChartLineUp, Notepad } from '@phosphor-icons/react';
 
 const ITEMS = [
   { to: '/dashboard', label: 'Kalender', icon: CalendarBlank },
   { to: '/today', label: 'Hari ini', icon: Sun },
   { to: '/report', label: 'Laporan', icon: ChartLineUp },
+  { to: '/notes', label: 'Notes', icon: Notepad },
 ];
 
 // Navigasi bawah khusus layar kecil (dirender hanya bila login, lihat App.jsx).

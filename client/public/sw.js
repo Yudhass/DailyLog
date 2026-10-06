@@ -2,7 +2,7 @@
 // API GET: network-first lalu cache (fallback baca offline).
 // Aset/statis: cache-first. Hanya tangani GET same-origin.
 
-const CACHE = 'dailylog-v1';
+const CACHE = 'dailylog-v2';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest'];
 
 self.addEventListener('install', (e) => {
@@ -35,6 +35,21 @@ self.addEventListener('fetch', (e) => {
           return res;
         })
         .catch(() => caches.match(request).then((hit) => hit || Response.error()))
+    );
+    return;
+  }
+  // HTML/navigasi: network-first agar deploy baru langsung kelihatan.
+  if (request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
+    e.respondWith(
+      fetch(request)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(request, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(request).then((hit) => hit || caches.match('/index.html')))
     );
     return;
   }

@@ -134,6 +134,29 @@ function defineModels(target) {
     { tableName: 'link_codes' }
   );
 
+  // Sticky Notes Board (update-3): kategori dinamis + catatan bebas tanggal
+  const NoteCategory = target.define(
+    'NoteCategory',
+    {
+      id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+      name: { type: DataTypes.STRING(128), allowNull: false },
+      orderIndex: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    },
+    { tableName: 'note_categories' }
+  );
+
+  const StickyNote = target.define(
+    'StickyNote',
+    {
+      id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+      title: { type: DataTypes.STRING(255), allowNull: false, defaultValue: '' },
+      content: { type: DataTypes.TEXT, allowNull: false, defaultValue: '' },
+      color: { type: DataTypes.STRING(16), allowNull: false, defaultValue: '#fef9c3' },
+      orderIndex: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    },
+    { tableName: 'sticky_notes' }
+  );
+
   // F4 langganan Web Push (dedup via hash: index utf8 MySQL tua maks 767 byte)
   const PushSubscription = target.define(
     'PushSubscription',
@@ -149,15 +172,21 @@ function defineModels(target) {
   );
 
   Summary.belongsTo(User, { foreignKey: { name: 'userId', allowNull: false }, onDelete: 'CASCADE' });
-  User.hasMany(Summary, { foreignKey: 'userId' });
-  ChatLink.belongsTo(User, { foreignKey: { name: 'userId', allowNull: false }, onDelete: 'CASCADE' });
+  User.hasMany(Summary, { foreignKey: 'userId' });  ChatLink.belongsTo(User, { foreignKey: { name: 'userId', allowNull: false }, onDelete: 'CASCADE' });
   User.hasMany(ChatLink, { foreignKey: 'userId' });
   LinkCode.belongsTo(User, { foreignKey: { name: 'userId', allowNull: false }, onDelete: 'CASCADE' });
   User.hasMany(LinkCode, { foreignKey: 'userId' });
   PushSubscription.belongsTo(User, { foreignKey: { name: 'userId', allowNull: false }, onDelete: 'CASCADE' });
   User.hasMany(PushSubscription, { foreignKey: 'userId' });
 
-  return { User, Task, ShareLink, Summary, ChatLink, LinkCode, PushSubscription };
+  NoteCategory.belongsTo(User, { foreignKey: { name: 'userId', allowNull: false }, onDelete: 'CASCADE' });
+  User.hasMany(NoteCategory, { foreignKey: 'userId' });
+  StickyNote.belongsTo(User, { foreignKey: { name: 'userId', allowNull: false }, onDelete: 'CASCADE' });
+  User.hasMany(StickyNote, { foreignKey: 'userId' });
+  StickyNote.belongsTo(NoteCategory, { foreignKey: { name: 'categoryId', allowNull: true }, onDelete: 'SET NULL' });
+  NoteCategory.hasMany(StickyNote, { foreignKey: 'categoryId' });
+
+  return { User, Task, ShareLink, Summary, ChatLink, LinkCode, PushSubscription, NoteCategory, StickyNote };
 }
 
 let models = defineModels(sequelize);
@@ -168,6 +197,8 @@ export let Summary = models.Summary;
 export let ChatLink = models.ChatLink;
 export let LinkCode = models.LinkCode;
 export let PushSubscription = models.PushSubscription;
+export let NoteCategory = models.NoteCategory;
+export let StickyNote = models.StickyNote;
 
 function rebindModels() {
   User = models.User;
@@ -177,6 +208,8 @@ function rebindModels() {
   ChatLink = models.ChatLink;
   LinkCode = models.LinkCode;
   PushSubscription = models.PushSubscription;
+  NoteCategory = models.NoteCategory;
+  StickyNote = models.StickyNote;
 }
 
 // ---------- helper durasi & tag ----------
