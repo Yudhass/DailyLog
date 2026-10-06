@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Flame } from '@phosphor-icons/react';
+import { Flame, MagnifyingGlass, X } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
-import TopBar from '../components/TopBar.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { TaskBadges, TagList } from '../components/TaskMeta.jsx';
 import {
@@ -49,11 +48,29 @@ function downloadBlob(data, filename, type) {
   URL.revokeObjectURL(url);
 }
 
+// Sorot potongan teks yang cocok dengan kata kunci (case-insensitive).
+// Sama seperti di halaman Notes.
+function highlight(text, q) {
+  const src = String(text || '');
+  const key = String(q || '').trim();
+  if (!key || !src) return src;
+  const idx = src.toLowerCase().indexOf(key.toLowerCase());
+  if (idx < 0) return src;
+  return (
+    <>
+      {src.slice(0, idx)}
+      <mark>{src.slice(idx, idx + key.length)}</mark>
+      {src.slice(idx + key.length)}
+    </>
+  );
+}
+
 export default function Report() {
   const [preset, setPreset] = useState('thisMonth');
   const [from, setFrom] = useState(rangeOf('thisMonth')[0]);
   const [to, setTo] = useState(rangeOf('thisMonth')[1]);
   const [filter, setFilter] = useState('ALL');
+  const [query, setQuery] = useState(''); // free-text search: judul, isi, tag
   const [tasks, setTasks] = useState([]);
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -123,11 +140,33 @@ export default function Report() {
   }, [harian]);
 
   const daftar = useMemo(() => {
-    const list = filter === 'ALL' ? tasks : tasks.filter((t) => t.status === filter);
+    const q = query.trim().toLowerCase();
+    let list = tasks;
+    // Free-text search: cocok ke judul, isi/deskripsi, atau tag — sama seperti Notes
+    // (kategori, nama note, isi). Status tetap disaring lewat segmen filter.
+    if (q) {
+      list = list.filter((t) => {
+        if ((t.title || '').toLowerCase().includes(q)) return true;
+        if ((t.description || '').toLowerCase().includes(q)) return true;
+        if ((t.tags || '').toLowerCase().includes(q)) return true;
+        return false;
+      });
+    }
+    if (filter !== 'ALL') list = list.filter((t) => t.status === filter);
     const byDate = {};
     for (const t of list) (byDate[keyOfTask(t)] ||= []).push(t);
     return Object.entries(byDate).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [tasks, filter]);
+  }, [tasks, filter, query]);
+
+  const searching = query.trim().length > 0;
+  const matchCount = useMemo(
+    () => daftar.reduce((acc, [, list]) => acc + list.length, 0),
+    [daftar],
+  );
+
+  // Skeleton hanya saat belum ada data sama sekali — angka & rincian lama tetap
+  // tampil selama rentang baru dimuat di latar.
+  const firstLoad = loading && tasks.length === 0 && !overview;
 
   const onExportCsv = useCallback(() => {
     const header = 'Tanggal,Judul,Status,Prioritas,Tag,Mulai,Selesai\n';
@@ -195,7 +234,6 @@ export default function Report() {
 
   return (
     <>
-      <TopBar />
       <main className="container page">
         <div className="page-head">
           <div>
@@ -270,7 +308,7 @@ export default function Report() {
           </div>
         </section>
 
-        {loading && (
+        {firstLoad && (
           <div className="skel-block" aria-label="Memuat laporan">
             <div className="skel" style={{ height: 92 }} />
             <div className="skel" style={{ height: 150 }} />
@@ -278,7 +316,7 @@ export default function Report() {
           </div>
         )}
 
-        {!loading && (
+        {!firstLoad && (
           <>
             <section className="stat-strip">
               <div className="stat">
@@ -392,7 +430,34 @@ export default function Report() {
 
             <section className="panel">
               <div className="panel-head">
-                <h2 style={{ fontSize: 17 }}>Rincian catatan</h2>
+                <h2 style={{ fontSize: 17 }}>
+                  Rincian catatan
+                  {searching && (
+                    <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 13 }}>
+                      {' '}• {matchCount} hasil untuk &ldquo;{query.trim()}&rdquo;
+                    </span>
+                  )}
+                </h2>
+                <div className="search-box" role="search">
+                  <MagnifyingGlass size={16} className="search-ico" aria-hidden="true" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Cari judul, isi, atau tag…"
+                    aria-label="Cari catatan"
+                    maxLength={128}
+                  />
+                  {query && (
+                    <button
+                      type="button"
+                      className="search-clear"
+                      aria-label="Hapus pencarian"
+                      onClick={() => setQuery('')}
+                    >
+                      <X size={14} weight="bold" />
+                    </button>
+                  )}
+                </div>
                 <div className="seg" role="group" aria-label="Saring status">
                   {FILTERS.map((f) => (
                     <button key={f.id} aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>{f.label}</button>
@@ -401,21 +466,32 @@ export default function Report() {
               </div>
 
               {daftar.length === 0 ? (
-                <p className="empty" style={{ marginTop: 16 }}>
-                  {tasks.length ? 'Tidak ada catatan dengan status ini.' : 'Belum ada catatan pada rentang ini. Ubah rentang tanggal atau tambahkan catatan baru.'}
-                </p>
+                <div className="empty" style={{ marginTop: 16 }}>
+                  {searching ? (
+                    <>
+                      <p>Tidak ada catatan yang cocok dengan &ldquo;{query.trim()}&rdquo;.</p>
+                      <p style={{ fontSize: 13 }}>Coba kata kunci lain, atau ubah status / rentang tanggal.</p>
+                      <button type="button" className="pill-btn" onClick={() => setQuery('')}>
+                        Hapus pencarian
+                      </button>
+                    </>
+                  ) : (
+                    <p>{tasks.length ? 'Tidak ada catatan dengan status ini.' : 'Belum ada catatan pada rentang ini. Ubah rentang tanggal atau tambahkan catatan baru.'}</p>
+                  )}
+                </div>
               ) : (
-                daftar.map(([key, list]) => (
+                <div className="report-list">
+                {daftar.map(([key, list]) => (
                   <div key={key} className="report-day">
                     <h3 className="report-date">{formatTanggal(new Date(`${key}T00:00:00`))}</h3>
-                    <ul className="task-list" style={{ marginTop: 10 }}>
+                    <ul className="task-list">
                       {list.map((t) => (
                         <li key={t.id}>
                           <div className="task-card" style={{ cursor: 'default' }}>
                             <span className="task-row">
-                              <strong style={{ fontSize: 15 }}>{t.title}</strong>
+                              <strong style={{ fontSize: 15 }}>{searching ? highlight(t.title, query.trim()) : t.title}</strong>
                             </span>
-                            {t.description && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{t.description}</span>}
+                            {t.description && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{searching ? highlight(t.description, query.trim()) : t.description}</span>}
                             <TaskBadges task={t} />
                             <TagList tags={t.tags} />
                             <span className="task-time mono">
@@ -426,7 +502,8 @@ export default function Report() {
                       ))}
                     </ul>
                   </div>
-                ))
+                ))}
+                </div>
               )}
             </section>
           </>

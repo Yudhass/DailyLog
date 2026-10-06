@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Plus, PencilSimple, Trash, DotsSixVertical, Notepad as NotepadIcon, Check,
+  MagnifyingGlass, X,
 } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
-import TopBar from '../components/TopBar.jsx';
 import NoteModal from '../components/NoteModal.jsx';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import { useToast } from '../context/ToastContext.jsx';
@@ -19,6 +19,22 @@ function fmtDate(iso) {
   }
 }
 
+// Sorot potongan teks yang cocok dengan kata kunci (case-insensitive).
+function highlight(text, q) {
+  const src = String(text || '');
+  const key = String(q || '').trim();
+  if (!key || !src) return src;
+  const idx = src.toLowerCase().indexOf(key.toLowerCase());
+  if (idx < 0) return src;
+  return (
+    <>
+      {src.slice(0, idx)}
+      <mark>{src.slice(idx, idx + key.length)}</mark>
+      {src.slice(idx + key.length)}
+    </>
+  );
+}
+
 export default function Notes() {
   const [categories, setCategories] = useState([]);
   const [notes, setNotes] = useState([]);
@@ -29,6 +45,7 @@ export default function Notes() {
   const [renameId, setRenameId] = useState(null);
   const [renameName, setRenameName] = useState('');
   const [confirmCat, setConfirmCat] = useState(null); // kolom yang diminta hapus
+  const [query, setQuery] = useState(''); // free-text search: kategori, judul, isi
 
   // --- drag & drop ---
   const [dragId, setDragId] = useState(null);
@@ -72,6 +89,45 @@ export default function Notes() {
     Object.values(map).forEach((arr) => arr.sort((a, b) => a.orderIndex - b.orderIndex));
     return map;
   }, [notes, columns]);
+
+  // ---------- free-text search: cocok ke nama kategori, judul, atau isi ----------
+  const q = query.trim().toLowerCase();
+  const catNameById = useMemo(() => {
+    const m = {};
+    columns.forEach((c) => { m[c.id] = c.name || ''; });
+    return m;
+  }, [columns]);
+
+  const filteredGrouped = useMemo(() => {
+    if (!q) return grouped;
+    const out = {};
+    Object.entries(grouped).forEach(([colId, list]) => {
+      const catName = (catNameById[colId] || '').toLowerCase();
+      const catHit = catName.includes(q);
+      out[colId] = list.filter((n) => {
+        if (catHit) return true;
+        if ((n.title || '').toLowerCase().includes(q)) return true;
+        // Isi disimpan sebagai HTML — ubah ke teks polos dulu (tanpa batas potong).
+        const plain = htmlToText(n.content || '', 100000).toLowerCase();
+        return plain.includes(q);
+      });
+    });
+    return out;
+  }, [grouped, q, catNameById]);
+
+  const searching = q.length > 0;
+  const matchCount = useMemo(
+    () => Object.values(filteredGrouped).reduce((acc, arr) => acc + arr.length, 0),
+    [filteredGrouped],
+  );
+
+  // Skeleton hanya saat papan benar-benar kosong — saat kembali ke halaman ini,
+  // kartu lama tetap tampil selama muat ulang di latar.
+  const firstLoad = loading && notes.length === 0 && categories.length === 0;
+  const visibleColumns = useMemo(
+    () => (searching ? columns.filter((c) => (filteredGrouped[c.id] || []).length > 0) : columns),
+    [columns, filteredGrouped, searching],
+  );
 
   // ---------- mutations ----------
   async function createCategory(e) {
@@ -268,24 +324,45 @@ export default function Notes() {
   // ---------- render ----------
   return (
     <>
-      <TopBar />
       <main className="container page">
         <div className="page-head">
-          <div>
+          <div className="page-title-block">
             <p className="page-kicker"><NotepadIcon size={14} /> Workspace bebas tanggal</p>
             <h1 className="page-title" style={{ fontSize: 'clamp(22px, 3vw, 30px)', letterSpacing: '-0.02em' }}>
               Sticky Notes
             </h1>
             <p style={{ color: 'var(--muted)', fontSize: 14 }}>
-              {notes.length} catatan • {categories.length} kategori • seret kartu untuk memindahkan
+              {searching
+                ? `${matchCount} hasil untuk "${query.trim()}" • ${notes.length} catatan total`
+                : `${notes.length} catatan • ${categories.length} kategori • seret kartu untuk memindahkan`}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="page-actions">
+            <div className="search-box" role="search">
+              <MagnifyingGlass size={16} className="search-ico" aria-hidden="true" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cari kategori, judul, atau isi…"
+                aria-label="Cari catatan"
+                maxLength={128}
+              />
+              {query && (
+                <button
+                  type="button"
+                  className="search-clear"
+                  aria-label="Hapus pencarian"
+                  onClick={() => setQuery('')}
+                >
+                  <X size={14} weight="bold" />
+                </button>
+              )}
+            </div>
             <button className="btn-primary" onClick={() => setAddingCat(true)}>+ Kategori baru</button>
           </div>
         </div>
 
-        {loading ? (
+        {firstLoad ? (
           <div className="board" aria-label="Memuat papan">
             {[0, 1, 2].map((i) => (
               <div key={i} className="board-col">
@@ -295,10 +372,19 @@ export default function Notes() {
               </div>
             ))}
           </div>
+        ) : searching && visibleColumns.length === 0 ? (
+          <div className="empty">
+            <span className="empty-ico"><MagnifyingGlass size={18} /></span>
+            <p>Tidak ada catatan yang cocok dengan &ldquo;{query.trim()}&rdquo;.</p>
+            <p style={{ fontSize: 13 }}>Coba kata kunci lain, atau periksa kategori / judul / isi catatan.</p>
+            <button type="button" className="pill-btn" onClick={() => setQuery('')}>
+              Hapus pencarian
+            </button>
+          </div>
         ) : (
           <div className="board" ref={boardRef}>
-            {columns.map((col) => {
-              const list = grouped[col.id] || [];
+            {visibleColumns.map((col) => {
+              const list = filteredGrouped[col.id] || [];
               return (
                 <section key={col.id} className="board-col" aria-label={col.name}>
                   <div className="board-col-head">
@@ -365,14 +451,16 @@ export default function Notes() {
                             className="note-grip"
                             role="button"
                             aria-label={`Seret catatan ${n.title || 'tanpa judul'}`}
+                            aria-hidden={searching}
+                            style={searching ? { display: 'none' } : undefined}
                             onPointerDown={(e) => onGripDown(e, n)}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <DotsSixVertical size={16} weight="bold" />
                           </span>
                           <div className="note-body">
-                            <strong className="note-title">{n.title || 'Tanpa judul'}</strong>
-                            {n.content && <p className="note-snippet">{htmlToText(n.content, 120)}</p>}
+                            <strong className="note-title">{searching ? highlight(n.title || 'Tanpa judul', q) : (n.title || 'Tanpa judul')}</strong>
+                            {n.content && <p className="note-snippet">{searching ? highlight(htmlToText(n.content, 120), q) : htmlToText(n.content, 120)}</p>}
                             <span className="note-date mono">{fmtDate(n.updatedAt)}</span>
                           </div>
                         </article>
@@ -382,7 +470,9 @@ export default function Notes() {
                       <div className="drop-line" aria-hidden="true" />
                     )}
                     {list.length === 0 && !dragId && (
-                      <p className="board-empty">Belum ada catatan. Jatuhkan kartu di sini atau tambah baru.</p>
+                      <p className="board-empty">
+                        {searching ? 'Tidak ada yang cocok di kategori ini.' : 'Belum ada catatan. Jatuhkan kartu di sini atau tambah baru.'}
+                      </p>
                     )}
                   </div>
 

@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import TopBar from '../components/TopBar.jsx';
 import PasswordInput from '../components/PasswordInput.jsx';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import { Field, PrimaryButton, inputStyle } from '../components/form.jsx';
@@ -33,7 +32,6 @@ export default function Profile() {
 
   return (
     <>
-      <TopBar />
       <main className="container page">
         <Link to="/dashboard" className="back-link">
           <ArrowLeft size={16} /> Kembali

@@ -282,9 +282,23 @@ input, select, textarea { font: inherit; color: inherit; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 12px 16px;
   flex-wrap: wrap;
 }
+/* Blok judul boleh menyusut agar aksi tidak terdorong overflow. */
+.page-title-block { min-width: 0; flex: 1 1 260px; }
+/* Baris aksi (search + tombol): rata kanan di desktop, boleh wrap rapi. */
+.page-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.page-actions .btn-primary { flex: 0 0 auto; }
+.page-actions .search-box { flex: 1 1 200px; min-width: 180px; max-width: 320px; }
 .page-kicker {
   color: var(--muted);
   font-size: 13px;
@@ -387,6 +401,11 @@ input, select, textarea { font: inherit; color: inherit; }
 .bar-label { color: var(--muted); font-size: 10px; }
 .report-day + .report-day { margin-top: 20px; }
 .report-date { font-size: 14px; color: var(--muted); font-family: 'Space Grotesk', sans-serif; }
+/* Daftar tanggal di bawah kepala panel (judul + search + tab filter):
+   beri napas agar tanggal pertama tidak menempel ke tab filter. */
+.report-list { margin-top: 18px; display: grid; gap: 22px; align-content: start; }
+.report-list .report-day + .report-day { margin-top: 0; }
+.report-list .task-list { margin-top: 10px; }
 
 /* --- sidebar --- */
 .drawer-root { position: fixed; inset: 0; z-index: 70; pointer-events: none; }
@@ -580,10 +599,13 @@ input, select, textarea { font: inherit; color: inherit; }
 .panel-head {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  gap: 10px 12px;
   flex-wrap: wrap;
 }
+.panel-head h2 { min-width: 0; flex: 1 1 160px; }
+.panel-head .search-box { flex: 1 1 200px; min-width: 180px; max-width: 300px; }
+.panel-head .seg { flex: 0 1 auto; }
 .task-list { list-style: none; display: grid; gap: 10px; margin-top: 16px; }
 .task-card {
   width: 100%;
@@ -785,6 +807,8 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
 }
 
 .tabbar { display: none; }
+/* FAB hanya untuk mobile — di desktop tombol tambah ada di tiap panel. */
+.fab { display: none; }
 .tabbar-item {
   display: flex;
   flex-direction: column;
@@ -892,8 +916,24 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   .page-head .pill-btn, .page-head .btn-primary { padding: 8px 13px; font-size: 13px; }
   .page-head { flex-direction: column; align-items: stretch; }
   .page-head > * { width: 100%; }
+  .page-title-block { flex: 1 1 auto; }
+  /* Aksi tetap sebaris: search elastis + tombol kompak, jarak dekat 8px.
+     nowrap + basis 0 agar tombol tidak pernah jatuh ke baris sendiri
+     (lebar placeholder tidak lagi mendorong wrap di layar sempit).
+     flex: none — basis 320px dari desktop hanya berlaku untuk baris
+     horizontal; di kolom vertikal ia menjadi tinggi 320px. */
+  .page-actions { flex: none; flex-direction: row; align-items: center; width: 100%; gap: 8px; flex-wrap: nowrap; }
+  .page-actions .search-box { max-width: none; width: auto; min-width: 0; flex: 1 1 0%; }
+  .page-actions .search-box input { font-size: 16px; padding: 11px 36px 11px 36px; }
+  .page-actions .btn-primary { width: auto; flex: 0 0 auto; }
   .page-head .seg { width: 100%; }
   .page-head .month-nav { width: 100%; justify-content: center; }
+  /* Panel (report): search + seg ditumpuk full-width agar tidak berdesakan. */
+  .panel-head { flex-direction: column; align-items: stretch; }
+  .panel-head h2 { flex: 1 1 auto; }
+  .panel-head .search-box { max-width: none; width: 100%; min-width: 0; flex: 1 1 auto; }
+  .panel-head .search-box input { font-size: 16px; }
+  .panel-head .seg { width: 100%; }
   .report-controls { grid-template-columns: 1fr; gap: 12px; }
   .date-range { grid-template-columns: 1fr; margin-top: 12px; }
   .week-grid { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
@@ -907,6 +947,8 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
 /* Layar sangat kecil (≤380px): cegah overflow horizontal */
 @media (max-width: 380px) {
   .container { padding-inline: 8px; }
+  .page-actions .search-box,
+  .panel-head .search-box { min-width: 0; }
   .auth-grid { padding-top: 60px; gap: 16px; padding-inline: 8px; }
   .auth-title { font-size: 23px; }
   .auth-desc { display: none; }
@@ -921,6 +963,60 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+/* --- search bebas (notes, dsb) --- */
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 200px;
+  max-width: 320px;
+}
+.search-box input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 10px 36px 10px 36px;
+  font-size: 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.search-box input:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+}
+.search-box input::placeholder { color: var(--muted); }
+.search-ico {
+  position: absolute;
+  left: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-clear {
+  position: absolute;
+  right: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+.search-clear:hover { background: var(--surface-2); color: var(--ink); }
+
+/* sorotan kata kunci di kartu sticky note + rincian laporan */
+.note-card mark,
+.task-card mark {
+  background: rgb(22 110 69 / 0.22);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
 }
 
 /* --- sticky notes board (update-3) --- */
@@ -984,7 +1080,16 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   gap: 10px;
   min-height: 60px;
   border-radius: 10px;
+  /* Bidang daftar putih di dalam kolom (kartu note tetap warna-warni). */
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 10px;
+  /* Sembunyikan scrollbar di dalam kolom — daftar tetap bisa di-scroll
+     (sentuh, roda mouse, dan seret kartu). */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.board-list::-webkit-scrollbar { display: none; }
 .board-empty {
   color: var(--muted);
   font-size: 13px;

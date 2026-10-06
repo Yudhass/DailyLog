@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Flame, Sun, PencilSimple, Trash, Plus } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
-import TopBar from '../components/TopBar.jsx';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import TaskModal from '../components/TaskModal.jsx';
 import QuickAdd from '../components/QuickAdd.jsx';
@@ -87,6 +86,10 @@ export default function Today() {
     return sortByPriority(list);
   }, [tasks, filter]);
 
+  // Skeleton hanya saat data benar-benar kosong — saat pindah tanggal / kembali
+  // ke halaman ini, daftar lama tetap tampil selama muat ulang di latar.
+  const firstLoad = loading && tasks.length === 0;
+
   async function saveTask(payload) {
     try {
       const res = await (modal?.task
@@ -135,7 +138,6 @@ export default function Today() {
 
   return (
     <>
-      <TopBar />
       <main className="container page">
         <div className="page-head">
           <div>
@@ -232,15 +234,14 @@ export default function Today() {
           ))}
         </div>
 
-        {loading && (
+        {firstLoad ? (
           <div className="skel-block" aria-label="Memuat catatan">
             <div className="skel" style={{ height: 18, width: '40%' }} />
             <div className="skel" style={{ height: 74 }} />
             <div className="skel" style={{ height: 74 }} />
             <div className="skel" style={{ height: 74 }} />
           </div>
-        )}
-        {!loading && (
+        ) : (
           <section className="panel">
             <div className="panel-head">
               <h2 style={{ fontSize: 17 }}>Agenda {isToday ? 'hari ini' : 'tanggal ini'}</h2>

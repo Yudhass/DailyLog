@@ -44,7 +44,7 @@ export let sequelize = buildSequelize(getDatabaseUrl());
 
 export const VALID_STATUSES = ['TODO', 'IN_PROGRESS', 'DONE'];
 export const VALID_PRIORITIES = ['HIGH', 'MEDIUM', 'LOW'];
-export const VALID_RECURRENCE = ['NONE', 'DAILY', 'WEEKDAYS', 'WEEKLY', 'MONTHLY'];
+export const VALID_RECURRENCE = ['NONE', 'DAILY', 'WEEKDAYS', 'WEEKLY', 'MONTHLY', 'HOURLY', 'YEARLY'];
 export const VALID_SOURCES = ['WEB', 'PWA', 'TELEGRAM', 'WHATSAPP', 'GITHUB', 'VOICE', 'MCP'];
 export const VALID_SUMMARY_STYLES = ['formal', 'refleksi', 'ringkas'];
 
@@ -74,6 +74,15 @@ function defineModels(target) {
       tags: { type: DataTypes.STRING(255), allowNull: false, defaultValue: '' },
       recurrence: { type: DataTypes.ENUM(...VALID_RECURRENCE), allowNull: false, defaultValue: 'NONE' },
       recurrenceUntil: { type: DataTypes.DATEONLY, allowNull: true },
+      // Pola pengulangan lanjutan (null = default dari tanggal mulai):
+      // - recurrenceInterval: tiap N jam/hari/minggu (HOURLY/DAILY/WEEKLY)
+      // - recurrenceDays: hari dalam minggu 0=Min..6=Sab, CSV (WEEKLY)
+      // - recurrenceMonthDay: tanggal 1-31 (MONTHLY/YEARLY)
+      // - recurrenceMonth: bulan 1-12 (YEARLY)
+      recurrenceInterval: { type: DataTypes.INTEGER, allowNull: true },
+      recurrenceDays: { type: DataTypes.STRING(16), allowNull: true },
+      recurrenceMonthDay: { type: DataTypes.TINYINT, allowNull: true },
+      recurrenceMonth: { type: DataTypes.TINYINT, allowNull: true },
       estimatedMinutes: { type: DataTypes.INTEGER, allowNull: true },
       source: { type: DataTypes.ENUM(...VALID_SOURCES), allowNull: false, defaultValue: 'WEB' },
     },
@@ -258,6 +267,10 @@ async function migrate() {
     ['tags', 'VARCHAR(255) NOT NULL DEFAULT \'\''],
     ['recurrence', "ENUM('NONE','DAILY','WEEKDAYS','WEEKLY','MONTHLY') NOT NULL DEFAULT 'NONE'"],
     ['recurrenceUntil', 'DATE NULL'],
+    ['recurrenceInterval', 'INT NULL'],
+    ['recurrenceDays', 'VARCHAR(16) NULL'],
+    ['recurrenceMonthDay', 'TINYINT NULL'],
+    ['recurrenceMonth', 'TINYINT NULL'],
     ['estimatedMinutes', 'INT NULL'],
     ['source', "ENUM('WEB','PWA','TELEGRAM','WHATSAPP','GITHUB','VOICE','MCP') NOT NULL DEFAULT 'WEB'"],
     ['deletedAt', 'DATETIME NULL'],
@@ -267,6 +280,23 @@ async function migrate() {
       await sequelize.query(`ALTER TABLE \`tasks\` ADD COLUMN \`${col}\` ${ddl}`);
       console.log(`Migrasi: kolom tasks.${col} ditambahkan.`);
     }
+  }
+  // Perluas ENUM recurrence untuk pola baru (HOURLY, YEARLY).
+  // Nilai baru ditambahkan di akhir agar indeks ENUM lama tidak bergeser.
+  try {
+    const [cols] = await sequelize.query(
+      'SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? LIMIT 1',
+      { replacements: [parseDbName(getDatabaseUrl()), 'tasks', 'recurrence'] }
+    );
+    const colType = String(cols?.[0]?.COLUMN_TYPE || cols?.[0]?.column_type || '');
+    if (colType && !colType.includes('HOURLY')) {
+      await sequelize.query(
+        "ALTER TABLE `tasks` MODIFY COLUMN `recurrence` ENUM('NONE','DAILY','WEEKDAYS','WEEKLY','MONTHLY','HOURLY','YEARLY') NOT NULL DEFAULT 'NONE'"
+      );
+      console.log('Migrasi: ENUM tasks.recurrence diperluas (HOURLY, YEARLY).');
+    }
+  } catch (err) {
+    console.error('Migrasi ENUM recurrence dilewati:', err.message);
   }
 }
 

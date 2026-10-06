@@ -12,12 +12,61 @@ export const PRIORITY = {
 };
 
 export const RECURRENCE = {
-  NONE: 'Tidak berulang',
+  NONE: 'Sekali saja',
+  HOURLY: 'Setiap jam',
   DAILY: 'Setiap hari',
   WEEKDAYS: 'Senin–Jumat',
-  WEEKLY: 'Setiap minggu',
-  MONTHLY: 'Setiap bulan',
+  WEEKLY: 'Mingguan — pilih hari',
+  MONTHLY: 'Bulanan — pilih tanggal',
+  YEARLY: 'Tahunan — pilih bulan & tanggal',
 };
+
+// Urutan tampil Sen..Min; nilai mengikuti getDay() (0=Min..6=Sab).
+export const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const HARI_PENDEK = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const BULAN_PENDEK = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+function dayOf(dateStr, fallback = 1) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? fallback : d.getDate();
+}
+
+function monthOf(dateStr, fallback = 1) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? fallback : d.getMonth() + 1;
+}
+
+function dowOf(dateStr, fallback = 1) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? fallback : d.getDay();
+}
+
+// Label ringkas pola pengulangan untuk badge (cth. "Sen, Rab" / "Tgl 5 tiap bulan").
+export function describeRecurrence(t) {
+  if (!t?.recurrence || t.recurrence === 'NONE') return '';
+  const iv = Number(t.recurrenceInterval) || 1;
+  switch (t.recurrence) {
+    case 'HOURLY': return iv > 1 ? `Tiap ${iv} jam` : 'Tiap jam';
+    case 'DAILY': return iv > 1 ? `Tiap ${iv} hari` : 'Tiap hari';
+    case 'WEEKDAYS': return 'Senin–Jumat';
+    case 'WEEKLY': {
+      const days = String(t.recurrenceDays || '')
+        .split(',').map((s) => Number(s.trim()))
+        .filter((n) => Number.isInteger(n) && n >= 0 && n <= 6);
+      const names = days.map((d) => HARI_PENDEK[d]).join(', ');
+      const tiap = iv > 1 ? ` tiap ${iv} minggu` : '';
+      return names ? `${names}${tiap}` : `Mingguan${tiap}`;
+    }
+    case 'MONTHLY':
+      return t.recurrenceMonthDay ? `Tgl ${t.recurrenceMonthDay} tiap bulan` : 'Tiap bulan';
+    case 'YEARLY':
+      return t.recurrenceMonth && t.recurrenceMonthDay
+        ? `${t.recurrenceMonthDay} ${BULAN_PENDEK[t.recurrenceMonth - 1]} tiap tahun`
+        : 'Tiap tahun';
+    default: return 'Berulang';
+  }
+}
 
 function nowTime() {
   const d = new Date();
@@ -25,6 +74,9 @@ function nowTime() {
 }
 
 export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete }) {
+  const initialDow = task?.recurrenceDays
+    ? String(task.recurrenceDays).split(',').map(Number).filter((n) => n >= 0 && n <= 6)
+    : [dowOf(task ? dateKey(new Date(task.logDate)) : defaultDate)];
   const [form, setForm] = useState({
     title: task?.title || '',
     description: task?.description || '',
@@ -36,15 +88,30 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
     tags: task?.tags || '',
     recurrence: task?.recurrence || 'NONE',
     recurrenceUntil: task?.recurrenceUntil ? String(task.recurrenceUntil).slice(0, 10) : '',
+    recurrenceInterval: task?.recurrenceInterval ? String(task.recurrenceInterval) : '1',
+    recurrenceDays: initialDow,
+    recurrenceMonthDay: task?.recurrenceMonthDay ? String(task.recurrenceMonthDay) : '',
+    recurrenceMonth: task?.recurrenceMonth ? String(task.recurrenceMonth) : '',
     estimatedMinutes: task?.estimatedMinutes || '',
   });
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
 
+  function toggleDay(dow) {
+    setForm((f) => ({
+      ...f,
+      recurrenceDays: f.recurrenceDays.includes(dow)
+        ? f.recurrenceDays.filter((d) => d !== dow)
+        : [...f.recurrenceDays, dow].sort((a, b) => WEEKDAY_ORDER.indexOf(a) - WEEKDAY_ORDER.indexOf(b)),
+    }));
+  }
+
   function submit(e) {
     e.preventDefault();
     if (!form.title.trim()) return setError('Judul wajib diisi');
+    const isNew = !task;
+    const rec = isNew ? form.recurrence : 'NONE';
     onSave({
       title: form.title.trim(),
       description: form.description.trim(),
@@ -54,8 +121,16 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
       status: form.status,
       priority: form.priority,
       tags: form.tags,
-      recurrence: task ? 'NONE' : form.recurrence,
-      recurrenceUntil: task ? null : form.recurrenceUntil || null,
+      recurrence: rec,
+      recurrenceUntil: isNew ? form.recurrenceUntil || null : null,
+      recurrenceInterval: isNew && ['HOURLY', 'DAILY', 'WEEKLY'].includes(rec)
+        ? Number(form.recurrenceInterval) || null : null,
+      recurrenceDays: isNew && rec === 'WEEKLY' && form.recurrenceDays.length
+        ? form.recurrenceDays.join(',') : null,
+      recurrenceMonthDay: isNew && ['MONTHLY', 'YEARLY'].includes(rec)
+        ? Number(form.recurrenceMonthDay) || null : null,
+      recurrenceMonth: isNew && rec === 'YEARLY'
+        ? Number(form.recurrenceMonth) || null : null,
       estimatedMinutes: form.estimatedMinutes ? Number(form.estimatedMinutes) : null,
     });
   }
@@ -120,20 +195,92 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
           />
         </label>
         {!task && (
-          <div className="field-grid-2">
-            <label className="field">
-              <span>Pengulangan</span>
-              <select style={inputStyle} value={form.recurrence} onChange={set('recurrence')}>
-                {Object.entries(RECURRENCE).map(([v, s]) => (
-                  <option key={v} value={v}>{s}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span>Ulangi sampai (opsional)</span>
-              <input style={inputStyle} type="date" value={form.recurrenceUntil} onChange={set('recurrenceUntil')} disabled={form.recurrence === 'NONE'} />
-            </label>
-          </div>
+          <>
+            <div className="field-grid-2">
+              <label className="field">
+                <span>Pengulangan</span>
+                <select style={inputStyle} value={form.recurrence} onChange={set('recurrence')}>
+                  {Object.entries(RECURRENCE).map(([v, s]) => (
+                    <option key={v} value={v}>{s}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>Ulangi sampai (opsional)</span>
+                <input style={inputStyle} type="date" value={form.recurrenceUntil} onChange={set('recurrenceUntil')} disabled={form.recurrence === 'NONE'} />
+              </label>
+            </div>
+            {form.recurrence === 'HOURLY' && (
+              <label className="field">
+                <span>Tiap berapa jam</span>
+                <input style={inputStyle} type="number" min="1" max="24" required
+                  value={form.recurrenceInterval} onChange={set('recurrenceInterval')}
+                  placeholder="cth: 2 = tiap 2 jam" />
+              </label>
+            )}
+            {form.recurrence === 'DAILY' && (
+              <label className="field">
+                <span>Tiap berapa hari</span>
+                <input style={inputStyle} type="number" min="1" max="30" required
+                  value={form.recurrenceInterval} onChange={set('recurrenceInterval')}
+                  placeholder="cth: 1 = tiap hari" />
+              </label>
+            )}
+            {form.recurrence === 'WEEKLY' && (
+              <>
+                <div className="field">
+                  <span>Di hari apa <em style={{ fontStyle: 'normal', opacity: 0.75 }}>(boleh pilih lebih dari satu)</em></span>
+                  <div className="seg" role="group" aria-label="Pilih hari pengulangan" style={{ flexWrap: 'wrap' }}>
+                    {WEEKDAY_ORDER.map((dow) => (
+                      <button
+                        key={dow}
+                        type="button"
+                        aria-selected={form.recurrenceDays.includes(dow)}
+                        onClick={() => toggleDay(dow)}
+                        style={{ flex: 1 }}
+                      >
+                        {HARI_PENDEK[dow]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <label className="field">
+                  <span>Tiap berapa minggu</span>
+                  <input style={inputStyle} type="number" min="1" max="12" required
+                    value={form.recurrenceInterval} onChange={set('recurrenceInterval')}
+                    placeholder="cth: 1 = tiap minggu" />
+                </label>
+              </>
+            )}
+            {form.recurrence === 'MONTHLY' && (
+              <label className="field">
+                <span>Tanggal tiap bulan (1–31)</span>
+                <input style={inputStyle} type="number" min="1" max="31"
+                  value={form.recurrenceMonthDay || dayOf(form.logDate)}
+                  onChange={set('recurrenceMonthDay')}
+                  placeholder={`cth: ${dayOf(form.logDate)}`} />
+              </label>
+            )}
+            {form.recurrence === 'YEARLY' && (
+              <div className="field-grid-2">
+                <label className="field">
+                  <span>Bulan</span>
+                  <select style={inputStyle} value={form.recurrenceMonth || monthOf(form.logDate)} onChange={set('recurrenceMonth')}>
+                    {BULAN_PANJANG.map((nama, i) => (
+                      <option key={i + 1} value={i + 1}>{nama}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Tanggal (1–31)</span>
+                  <input style={inputStyle} type="number" min="1" max="31"
+                    value={form.recurrenceMonthDay || dayOf(form.logDate)}
+                    onChange={set('recurrenceMonthDay')}
+                    placeholder={`cth: ${dayOf(form.logDate)}`} />
+                </label>
+              </div>
+            )}
+          </>
         )}
         <div className="modal-actions">
           {task ? (

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus } from '@phosphor-icons/react';
 import { api } from '../api/client.js';
-import TopBar from '../components/TopBar.jsx';
 import MonthCalendar from '../components/MonthCalendar.jsx';
 import WeekView from '../components/WeekView.jsx';
 import DayAgenda from '../components/DayAgenda.jsx';
@@ -115,9 +114,12 @@ export default function Dashboard() {
 
   const heading = view === 'month' ? bulanTahun(cursor) : `Pekan ${formatTanggal(anchor).split(',')[1]?.trim() || ''}`;
 
+  // Skeleton hanya saat belum ada data sama sekali — kalender lama tetap tampil
+  // selama bulan baru dimuat di latar (layout bawah selalu dirender).
+  const firstLoad = loading && tasks.length === 0;
+
   return (
     <>
-      <TopBar />
       <main className="container page">
         <div className="page-head">
           <div>
@@ -146,7 +148,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {loading && (
+        {firstLoad && (
           <div className="layout" aria-label="Memuat kalender">
             <div className="layout-cal skel-cal">
               {Array.from({ length: 14 }).map((_, i) => <div key={i} className="skel" />)}

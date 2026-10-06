@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
@@ -10,10 +10,19 @@ import Notes from './pages/Notes.jsx';
 import SharedView from './pages/SharedView.jsx';
 import TabBar from './components/TabBar.jsx';
 import SidebarStatic from './components/SidebarStatic.jsx';
+import TopBar from './components/TopBar.jsx';
 
-function Private({ children }) {
+// Layout persisten: header di-mount sekali dan tidak ikut remount saat pindah
+// halaman, supaya navigasi tidak terasa seperti refresh.
+function PrivateLayout() {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  return (
+    <>
+      <TopBar />
+      <Outlet />
+    </>
+  );
 }
 
 export default function App() {
@@ -24,11 +33,13 @@ export default function App() {
         <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
         <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
-        <Route path="/dashboard" element={<Private><Dashboard /></Private>} />
-        <Route path="/today" element={<Private><Today /></Private>} />
-        <Route path="/report" element={<Private><Report /></Private>} />
-        <Route path="/profile" element={<Private><Profile /></Private>} />
-        <Route path="/notes" element={<Private><Notes /></Private>} />
+        <Route element={<PrivateLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/today" element={<Today />} />
+          <Route path="/report" element={<Report />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/notes" element={<Notes />} />
+        </Route>
         <Route path="/s/:token" element={<SharedView />} />
       </Routes>
       {user && <TabBar />}

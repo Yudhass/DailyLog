@@ -1,5 +1,5 @@
 import { Repeat } from '@phosphor-icons/react';
-import { PRIORITY } from './TaskModal.jsx';
+import { PRIORITY, describeRecurrence } from './TaskModal.jsx';
 import StatusBadge from './StatusBadge.jsx';
 
 export function PriorityBadge({ priority }) {
@@ -30,7 +30,9 @@ export function TaskBadges({ task }) {
       <StatusBadge status={task.status} />
       <PriorityBadge priority={task.priority} />
       {task.recurrence && task.recurrence !== 'NONE' && (
-        <span className="recur-note"><Repeat size={12} /> berulang</span>
+        <span className="recur-note" title={`Berulang: ${describeRecurrence(task) || task.recurrence}`}>
+          <Repeat size={12} /> {describeRecurrence(task) || 'berulang'}
+        </span>
       )}
     </span>
   );
