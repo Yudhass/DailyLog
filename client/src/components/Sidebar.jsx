@@ -11,10 +11,45 @@ const ITEMS = [
   { to: '/profile', label: 'Profil', icon: UserCircle },
 ];
 
-export default function Sidebar({ open, onClose }) {
+// Konten navigasi dipakai ulang oleh drawer (mobile) dan sidebar statis (desktop).
+export function SidebarBody({ onClose }) {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
+
+  return (
+    <>
+      <nav className="drawer-nav">
+        {ITEMS.map(({ to, label, icon: Icon }) => (
+          <NavLink key={to} to={to} onClick={onClose} className="drawer-item">
+            {({ isActive }) => (
+              <>
+                <Icon size={20} weight={isActive ? 'fill' : 'regular'} />
+                <span>{label}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className="drawer-foot">
+        <p className="drawer-user">{user?.name}</p>
+        <p className="drawer-mail">{user?.email}</p>
+        <button className="drawer-item" onClick={toggle}>
+          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          <span>{theme === 'dark' ? 'Tema terang' : 'Tema gelap'}</span>
+        </button>
+        <button className="drawer-item" onClick={() => { logout(); onClose?.(); navigate('/login'); }}>
+          <SignOut size={20} />
+          <span>Keluar</span>
+        </button>
+      </div>
+    </>
+  );
+}
+
+export default function Sidebar({ open, onClose }) {
+  const { user: _user } = useAuth();
 
   useEffect(() => {
     if (!open) return;
@@ -39,32 +74,7 @@ export default function Sidebar({ open, onClose }) {
             <X size={17} />
           </button>
         </div>
-
-        <nav className="drawer-nav">
-          {ITEMS.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} onClick={onClose} className="drawer-item">
-              {({ isActive }) => (
-                <>
-                  <Icon size={20} weight={isActive ? 'fill' : 'regular'} />
-                  <span>{label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="drawer-foot">
-          <p className="drawer-user">{user?.name}</p>
-          <p className="drawer-mail">{user?.email}</p>
-          <button className="drawer-item" onClick={toggle}>
-            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            <span>{theme === 'dark' ? 'Tema terang' : 'Tema gelap'}</span>
-          </button>
-          <button className="drawer-item" onClick={() => { logout(); onClose(); navigate('/login'); }}>
-            <SignOut size={20} />
-            <span>Keluar</span>
-          </button>
-        </div>
+        <SidebarBody onClose={onClose} />
       </aside>
     </div>
   );

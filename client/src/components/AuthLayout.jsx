@@ -1,4 +1,4 @@
-import { Sun, Moon } from '@phosphor-icons/react';
+import { Sun, Moon, CalendarBlank, Sparkle, ChatCircleText } from '@phosphor-icons/react';
 import { useTheme } from '../context/ThemeContext.jsx';
 
 function ThemeButton() {
@@ -25,6 +25,20 @@ export default function AuthLayout({ title, subtitle, children }) {
           <p style={{ color: 'var(--muted)', marginTop: 14, maxWidth: '44ch' }}>
             Catat kegiatan, pantau tugas dari kalender, dan lihat progresmu tersusun rapi seperti buku catatan pribadi.
           </p>
+          <ul className="auth-points">
+            <li>
+              <span className="auth-ico"><CalendarBlank size={17} /></span>
+              <span><strong>Kalender hidup</strong>Agenda harian, mingguan, dan bulanan dalam satu tempat.</span>
+            </li>
+            <li>
+              <span className="auth-ico"><Sparkle size={17} /></span>
+              <span><strong>Catat secepat chat</strong>Quick add bahasa natural dan ringkasan otomatis.</span>
+            </li>
+            <li>
+              <span className="auth-ico"><ChatCircleText size={17} /></span>
+              <span><strong>Selalu terjangkau</strong>Bot Telegram, mode offline, dan pengingat harian.</span>
+            </li>
+          </ul>
         </div>
         <section className="auth-card">
           <h2 style={{ fontSize: 24 }}>{title}</h2>

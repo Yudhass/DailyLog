@@ -9,19 +9,21 @@ export default function TopBar() {
   const [open, setOpen] = useState(false);
 
   return (
+    <>
     <header className="app-header">
       <div className="container header-row">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button className="icon-btn" onClick={() => setOpen(true)} aria-label="Buka menu" aria-expanded={open}>
+          <button className="icon-btn menu-toggle" onClick={() => setOpen(true)} aria-label="Buka menu" aria-expanded={open}>
             <List size={19} />
           </button>
-          <Link to="/dashboard" className="brand">
+          <Link to="/dashboard" className="brand header-brand">
             DailyLog<span style={{ color: 'var(--green)' }}>.</span>
           </Link>
         </div>
         <Link to="/profile" className="muted-link desktop-only">{user?.name}</Link>
       </div>
-      <Sidebar open={open} onClose={() => setOpen(false)} />
     </header>
+    <Sidebar open={open} onClose={() => setOpen(false)} />
+    </>
   );
 }

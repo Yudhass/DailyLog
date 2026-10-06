@@ -14,6 +14,9 @@ export default function Profile() {
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
+  const [linkCode, setLinkCode] = useState('');
+  const [chatLinks, setChatLinks] = useState([]);
+  const [pushState, setPushState] = useState('');
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -53,6 +56,86 @@ export default function Profile() {
         <button onClick={() => { logout(); navigate('/login'); }} className="pill-btn" style={{ width: '100%' }}>
           Keluar dari akun
         </button>
+
+        <section className="panel" style={{ marginTop: 16 }}>
+          <h2 style={{ fontSize: 17 }}>Bot Telegram</h2>
+          <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+            Buat kode sekali pakai (10 menit), lalu kirim ke bot untuk menautkan akun.
+          </p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <button className="pill-btn" onClick={async () => {
+              setError('');
+              try {
+                const { data } = await api.post('/chat-links/code');
+                setLinkCode(data.code);
+                const list = await api.get('/chat-links');
+                setChatLinks(list.data);
+              } catch (err) { setError(err.response?.data?.error || 'Gagal membuat kode.'); }
+            }}>
+              Buat kode tautan
+            </button>
+            <button className="pill-btn" onClick={async () => {
+              try { const { data } = await api.get('/chat-links'); setChatLinks(data); }
+              catch { /* abaikan */ }
+            }}>
+              Muat ulang tautan
+            </button>
+          </div>
+          {linkCode && <p className="mono" style={{ fontSize: 20, letterSpacing: '0.2em', marginTop: 8 }}>{linkCode}</p>}
+          {chatLinks.length > 0 && (
+            <ul className="task-list" style={{ marginTop: 8 }}>
+              {chatLinks.map((l) => (
+                <li key={l.id} className="task-row">
+                  <span className="mono" style={{ fontSize: 13 }}>{l.provider} • {l.label || l.externalId}</span>
+                  <button className="danger-btn" onClick={async () => {
+                    await api.delete(`/chat-links/${l.id}`);
+                    setChatLinks(chatLinks.filter((x) => x.id !== l.id));
+                  }}>
+                    Putuskan
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="panel" style={{ marginTop: 16 }}>
+          <h2 style={{ fontSize: 17 }}>Notifikasi push</h2>
+          <p style={{ color: 'var(--muted)', fontSize: 14 }}>
+            Aktifkan push untuk pengingat. Catatan iOS: pasang aplikasi ke layar utama dulu agar push berfungsi.
+          </p>
+          {pushState && <p className="mono" style={{ fontSize: 13 }}>{pushState}</p>}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <button className="pill-btn" onClick={async () => {
+              setPushState('');
+              try {
+                if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                  setPushState('Browser tidak mendukung push.');
+                  return;
+                }
+                const perm = await Notification.requestPermission();
+                if (perm !== 'granted') { setPushState('Izin notifikasi ditolak.'); return; }
+                const { data } = await api.get('/push/public-key');
+                if (!data.publicKey) { setPushState('Server belum punya VAPID key.'); return; }
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: data.publicKey,
+                });
+                await api.post('/push/subscribe', { subscription: sub.toJSON(), kinds: 'reminder,summary' });
+                setPushState('Push aktif ✓');
+              } catch (err) { setPushState(err.response?.data?.error || 'Gagal mengaktifkan push.'); }
+            }}>
+              Aktifkan push
+            </button>
+            <button className="pill-btn" onClick={async () => {
+              try { const { data } = await api.post('/push/test'); setPushState(`Uji terkirim ke ${data.sent} perangkat.`); }
+              catch (err) { setPushState(err.response?.data?.error || 'Uji push gagal.'); }
+            }}>
+              Kirim uji
+            </button>
+          </div>
+        </section>
       </main>
     </>
   );

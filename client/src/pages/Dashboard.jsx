@@ -5,12 +5,14 @@ import MonthCalendar from '../components/MonthCalendar.jsx';
 import WeekView from '../components/WeekView.jsx';
 import DayAgenda from '../components/DayAgenda.jsx';
 import TaskModal from '../components/TaskModal.jsx';
-import { STATUS, dateKey, formatTanggal, keyOfTask } from '../utils/date.js';
+import QuickAdd from '../components/QuickAdd.jsx';
+import SyncStatus from '../components/SyncStatus.jsx';
+import { bulanTahun, dateKey, formatTanggal, keyOfTask } from '../utils/date.js';
+import { sortByPriority } from '../components/TaskMeta.jsx';
 
 const VIEWS = [
   { id: 'month', label: 'Bulan' },
   { id: 'week', label: 'Minggu' },
-  { id: 'day', label: 'Hari' },
 ];
 
 const FILTERS = [
@@ -20,12 +22,12 @@ const FILTERS = [
   { id: 'TODO', label: 'Belum' },
 ];
 
-export default function Dashboard({ initialView = 'month', todayOnly = false }) {
+export default function Dashboard() {
   const [cursor, setCursor] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const [anchor, setAnchor] = useState(() => new Date());
   const [tasks, setTasks] = useState([]);
   const [selected, setSelected] = useState(() => dateKey(new Date()));
-  const [view, setView] = useState(initialView);
+  const [view, setView] = useState('month');
   const [modal, setModal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saveError, setSaveError] = useState('');
@@ -36,6 +38,9 @@ export default function Dashboard({ initialView = 'month', todayOnly = false }) 
     try {
       const { data } = await api.get('/tasks', { params: { month: cursor.getMonth() + 1, year: cursor.getFullYear() } });
       setTasks(data);
+      setSaveError('');
+    } catch {
+      setSaveError('Gagal memuat catatan');
     } finally {
       setLoading(false);
     }
@@ -43,28 +48,14 @@ export default function Dashboard({ initialView = 'month', todayOnly = false }) 
 
   useEffect(() => {
     if (!selected) return;
-    const selectedMonth = new Date(selected.slice(0, 4), parseInt(selected.slice(5, 7)) - 1, selected.slice(8, 10));
-    const month = cursor.getMonth();
-    if (selectedMonth.getMonth() !== month) {
-      setCursor(new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1));
+    const y = parseInt(selected.slice(0, 4), 10);
+    const m = parseInt(selected.slice(5, 7), 10) - 1;
+    if (m !== cursor.getMonth() || y !== cursor.getFullYear()) {
+      setCursor(new Date(y, m, 1));
     }
-    api.get('/tasks', { params: { month: cursor.getMonth() + 1, year: cursor.getFullYear() } })
-      .then(({ data }) => setTasks(data))
-      .catch(() => setError('Gagal memuat catatan'))
-      .finally(() => setLoading(false));
   }, [selected, cursor]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { load(); }, [selected]);
-
-  // When todayOnly, force cursor to current month and selected to today
-  useEffect(() => {
-    if (todayOnly) {
-      const now = new Date();
-      setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
-      setSelected(dateKey(now));
-    }
-  }, [todayOnly, selected]);
 
   const tasksByDay = useMemo(() => {
     const map = {};
@@ -74,17 +65,23 @@ export default function Dashboard({ initialView = 'month', todayOnly = false }) 
 
   const selectedTasks = useMemo(() => {
     const list = filter === 'ALL' ? (tasksByDay[selected] || []) : tasksByDay[selected]?.filter((t) => t.status === filter) || [];
-    return list.slice().sort((a, b) => (a.startTime || '99').localeCompare(b.startTime || '99'));
+    return sortByPriority(list);
   }, [tasksByDay, selected, filter]);
 
   function shift(dir) {
     if (view === 'month') {
-      setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1));
-      const d = new Date(cursor); d.setMonth(d.getMonth() + dir); setAnchor(d);
-    } else if (view === 'week') {
-      const d = new Date(anchor); d.setDate(d.getDate() + dir * 7); setAnchor(d); setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+      // Pindahkan selected & anchor ikut ke bulan baru agar effect sinkron
+      // tidak mengembalikan cursor ke bulan lama.
+      const next = new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1);
+      setCursor(next);
+      setAnchor(next);
+      setSelected(dateKey(next));
     } else {
-      const d = new Date(anchor); d.setDate(d.getDate() + dir); setAnchor(d); setSelected(dateKey(d)); setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+      const d = new Date(anchor);
+      d.setDate(d.getDate() + dir * 7);
+      setAnchor(d);
+      setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
+      setSelected(dateKey(d));
     }
   }
 
@@ -111,19 +108,32 @@ export default function Dashboard({ initialView = 'month', todayOnly = false }) 
     }
   }
 
-  const heading = view === 'month' ? bulanTahun(cursor) : view === 'week' ? `Pekan ${formatTanggal(anchor).split(',')[1]?.trim() || ''}` : formatTanggal(anchor);
+  const heading = view === 'month' ? bulanTahun(cursor) : `Pekan ${formatTanggal(anchor).split(',')[1]?.trim() || ''}`;
 
   return (
     <>
       <TopBar />
       <main className="container page">
         <div className="page-head">
-          <div className="month-nav">
-            <button onClick={() => shift(-1)} aria-label="Sebelumnya" className="arrow-btn">‹</button>
-            <h1 className="page-title" style={{ fontSize: 'clamp(20px, 3vw, 30px)', letterSpacing: '-0.02em' }}>{heading}</h1>
-            <button onClick={() => shift(1)} aria-label="Berikutnya" className="arrow-btn">›</button>
+          <div>
+            <p className="mono" style={{ color: 'var(--muted)', fontSize: 13 }}>Ringkasan kalender</p>
+            <div className="month-nav">
+              <button onClick={() => shift(-1)} aria-label="Sebelumnya" className="arrow-btn">‹</button>
+              <h1 className="page-title" style={{ fontSize: 'clamp(20px, 3vw, 30px)', letterSpacing: '-0.02em' }}>{heading}</h1>
+              <button onClick={() => shift(1)} aria-label="Berikutnya" className="arrow-btn">›</button>
+            </div>
           </div>
-          <div className="seg" role="tablist" aria-label="Tampilan">
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <SyncStatus />
+            <QuickAdd defaultDate={selected} onSaved={() => load()} />
+            <button className="btn-primary" onClick={() => setModal({ task: null })}>
+              + Catatan
+            </button>
+          </div>
+        </div>
+
+        <div className="page-head" style={{ marginTop: -8 }}>
+          <div className="seg" role="tablist" aria-label="Tampilan kalender">
             {VIEWS.map((v) => <button key={v.id} role="tab" aria-selected={view === v.id} onClick={() => setView(v.id)} style={{ flex: 1 }}>{v.label}</button>)}
           </div>
           <div className="seg" role="group" aria-label="Filter">
@@ -131,7 +141,18 @@ export default function Dashboard({ initialView = 'month', todayOnly = false }) 
           </div>
         </div>
 
-        {loading && <p className="mono" style={{ color: 'var(--muted)' }}>Memuat…</p>}
+        {loading && (
+          <div className="layout" aria-label="Memuat kalender">
+            <div className="layout-cal skel-cal">
+              {Array.from({ length: 14 }).map((_, i) => <div key={i} className="skel" />)}
+            </div>
+            <div className="layout-side skel-block">
+              <div className="skel" style={{ height: 18, width: '55%' }} />
+              <div className="skel" style={{ height: 74 }} />
+              <div className="skel" style={{ height: 74 }} />
+            </div>
+          </div>
+        )}
         {saveError && <p role="alert" className="notice-error">{saveError}</p>}
 
         {view === 'month' && (
@@ -146,8 +167,6 @@ export default function Dashboard({ initialView = 'month', todayOnly = false }) 
         )}
 
         {view === 'week' && <WeekView anchor={anchor} tasksByDay={tasksByDay} selected={selected} onSelect={setSelected} onEdit={(t) => setModal({ task: t })} />}
-
-        {view === 'day' && <DayAgenda dateStr={selected} tasks={selectedTasks} onAdd={() => setModal({ task: null })} onEdit={(t) => setModal({ task: t })} />}
       </main>
 
       {modal && <TaskModal task={modal.task} defaultDate={selected} onClose={() => setModal(null)} onSave={saveTask} onDelete={deleteTask} />}

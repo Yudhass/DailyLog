@@ -10,7 +10,7 @@ export function Field({ label, children }) {
 export const inputStyle = {
   width: '100%',
   border: '1px solid var(--line)',
-  borderRadius: 10,
+  borderRadius: 8,
   padding: '10px 12px',
   background: 'var(--paper)',
 };
@@ -24,7 +24,7 @@ export function PrimaryButton({ children, ...props }) {
         background: 'var(--green)',
         color: 'var(--on-green)',
         border: 'none',
-        borderRadius: 10,
+        borderRadius: 8,
         padding: '11px 16px',
         fontWeight: 600,
         opacity: props.disabled ? 0.6 : 1,

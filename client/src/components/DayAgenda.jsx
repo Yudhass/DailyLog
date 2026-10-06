@@ -1,30 +1,39 @@
-import StatusBadge from './StatusBadge.jsx';
+import { CalendarPlus } from '@phosphor-icons/react';
 import { formatTanggal } from '../utils/date.js';
+import { TaskBadges, TagList } from './TaskMeta.jsx';
 
 export default function DayAgenda({ dateStr, tasks, onAdd, onEdit }) {
   return (
     <section className="panel">
       <div className="panel-head">
         <h2 style={{ fontSize: 17 }}>{formatTanggal(new Date(`${dateStr}T00:00:00`))}</h2>
-        <button onClick={onAdd} className="pill-btn desktop-only" style={{ border: 'none', background: 'var(--green)', color: 'var(--on-green)', fontWeight: 600 }}>
+        <button onClick={onAdd} className="btn-primary desktop-only">
           + Catatan
         </button>
       </div>
       <ul className="task-list">
         {tasks.length === 0 && (
-          <li className="empty">Belum ada catatan. Tap tombol tambah untuk mengisi hari ini.</li>
+          <li className="empty">
+            <span className="empty-ico"><CalendarPlus size={18} /></span>
+            Belum ada catatan. Tap tombol tambah untuk mengisi hari ini.
+          </li>
         )}
         {tasks.map((t) => (
           <li key={t.id}>
-            <button onClick={() => onEdit(t)} className="task-card">
+            <button
+              onClick={() => onEdit(t)}
+              className="task-card"
+              data-pri={t.priority || 'MEDIUM'}
+            >
               <span className="task-row">
                 <strong style={{ fontSize: 15 }}>{t.title}</strong>
                 <span className="mono" style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
                   {t.startTime ? (t.endTime ? `${t.startTime} - ${t.endTime}` : t.startTime) : 'Seharian'}
                 </span>
               </span>
-              {t.description && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{t.description}</span>}
-              <StatusBadge status={t.status} />
+              {t.description && <span className="task-desc">{t.description}</span>}
+              <TaskBadges task={t} />
+              <TagList tags={t.tags} />
             </button>
           </li>
         ))}
