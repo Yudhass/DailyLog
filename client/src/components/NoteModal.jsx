@@ -1,16 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  TextB, TextItalic, TextUnderline, TextHTwo, ListBullets, ListNumbers,
-  Link as LinkIcon, Image as ImageIcon, Eraser, Check, Trash, PencilSimple,
-} from '@phosphor-icons/react';
+import { useEffect, useMemo, useState } from 'react';
+import { Check, Trash, PencilSimple } from '@phosphor-icons/react';
 import { sanitizeHtml } from '../utils/sanitize.js';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import SummernoteEditor from './SummernoteEditor.jsx';
 
 export const NOTE_COLORS = ['#fef9c3', '#ffedd5', '#dcfce7', '#e0f2fe', '#fae8ff', '#ffe4e6'];
-
-function exec(cmd, value = null) {
-  document.execCommand(cmd, false, value);
-}
 
 function fmtDateTime(iso) {
   try {
@@ -25,113 +19,39 @@ function fmtDateTime(iso) {
 export default function NoteModal({ note, categories, defaultCategoryId, onClose, onSave, onDelete }) {
   const [mode, setMode] = useState(note ? 'view' : 'edit');
   const [title, setTitle] = useState(note?.title || '');
+  const [descHtml, setDescHtml] = useState(() => sanitizeHtml(note?.content || ''));
   const [color, setColor] = useState(note?.color || NOTE_COLORS[0]);
   const [categoryId, setCategoryId] = useState(note?.categoryId || defaultCategoryId || '');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [linkPrompt, setLinkPrompt] = useState(false);
-  const editorRef = useRef(null);
-  const fileRef = useRef(null);
-  const initialHtml = useRef(sanitizeHtml(note?.content || ''));
 
   const viewHtml = useMemo(() => sanitizeHtml(note?.content || ''), [note]);
   const catName = categories.find((c) => c.id === (note?.categoryId || ''))?.name || 'Tanpa kategori';
 
-  // Isi editor setiap kali masuk mode edit (agar batal-edit kembali ke data tersimpan).
+  // Reset isi form setiap kali masuk mode edit (agar batal-edit kembali ke data tersimpan).
   useEffect(() => {
-    if (mode === 'edit' && editorRef.current) {
-      editorRef.current.innerHTML = sanitizeHtml(note?.content || '');
-      editorRef.current.focus();
+    if (mode === 'edit') {
+      setTitle(note?.title || '');
+      setDescHtml(sanitizeHtml(note?.content || ''));
+      setColor(note?.color || NOTE_COLORS[0]);
+      setCategoryId(note?.categoryId || defaultCategoryId || '');
+      setError('');
     }
-  }, [mode, note]);
+  }, [mode, note, defaultCategoryId]);
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape' && !confirmDelete && !linkPrompt) onClose();
+      if (e.key === 'Escape' && !confirmDelete) onClose();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [onClose, confirmDelete, linkPrompt]);
-
-  function tool(cmd, value) {
-    return {
-      onMouseDown: (e) => {
-        e.preventDefault();
-        editorRef.current?.focus();
-        exec(cmd, value);
-      },
-    };
-  }
-
-  function applyLink(url) {
-    setLinkPrompt(false);
-    if (!url) return;
-    editorRef.current?.focus();
-    exec('createLink', url);
-  }
-
-  function insertImage(file) {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return setError('File harus berupa gambar.');
-    if (file.size > 1.5 * 1024 * 1024) return setError('Ukuran gambar maksimal 1,5 MB agar ringan.');
-    const reader = new FileReader();
-    reader.onload = () => {
-      downscale(String(reader.result), (small) => {
-        editorRef.current?.focus();
-        exec('insertImage', small);
-        setError('');
-      });
-    };
-    reader.readAsDataURL(file);
-  }
-
-  // Kecilkan gambar ke maks 640px agar ringan & tidak raksasa di kartu.
-  function downscale(dataUrl, done) {
-    const img = new Image();
-    img.onload = () => {
-      const MAX = 640;
-      if (img.width <= MAX) return done(dataUrl);
-      const scale = MAX / img.width;
-      const canvas = document.createElement('canvas');
-      canvas.width = MAX;
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      done(canvas.toDataURL('image/jpeg', 0.82));
-    };
-    img.onerror = () => done(dataUrl);
-    img.src = dataUrl;
-  }
-
-  // Klik gambar di editor -> pilih (beri bingkai) + tampilkan alat resize.
-  const [selImg, setSelImg] = useState(null); // { x, y }
-
-  function onEditorClick(e) {
-    const t = e.target;
-    if (t?.tagName === 'IMG' && editorRef.current?.contains(t)) {
-      editorRef.current.querySelectorAll('img.sel-img').forEach((im) => im.classList.remove('sel-img'));
-      t.classList.add('sel-img');
-      setSelImg({ x: e.clientX, y: e.clientY });
-    } else {
-      editorRef.current?.querySelectorAll('img.sel-img').forEach((im) => im.classList.remove('sel-img'));
-      setSelImg(null);
-    }
-  }
-
-  function resizeSelected(width) {
-    const img = editorRef.current?.querySelector('img.sel-img');
-    if (img) {
-      if (width) img.setAttribute('width', String(width));
-      else img.removeAttribute('width');
-    }
-    setSelImg(null);
-    editorRef.current?.querySelectorAll('img.sel-img').forEach((im) => im.classList.remove('sel-img'));
-    editorRef.current?.focus();
-  }
+  }, [onClose, confirmDelete]);
 
   function cancelEdit() {
     if (note) {
       setTitle(note.title || '');
+      setDescHtml(sanitizeHtml(note.content || ''));
       setColor(note.color || NOTE_COLORS[0]);
       setCategoryId(note.categoryId || '');
       setError('');
@@ -143,7 +63,7 @@ export default function NoteModal({ note, categories, defaultCategoryId, onClose
 
   async function submit(e) {
     e.preventDefault();
-    const content = sanitizeHtml(editorRef.current?.innerHTML || '');
+    const content = sanitizeHtml(descHtml || '');
     if (!title.trim() && !content.replace(/<[^>]*>/g, '').trim()) {
       return setError('Isi judul atau catatan terlebih dahulu.');
     }
@@ -208,45 +128,16 @@ export default function NoteModal({ note, categories, defaultCategoryId, onClose
               <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Judul catatan…" maxLength={255} />
             </label>
 
-            <div className="rte-toolbar" role="toolbar" aria-label="Format teks">
-              <button type="button" className="rte-btn" title="Tebal" {...tool('bold')}><TextB size={17} /></button>
-              <button type="button" className="rte-btn" title="Miring" {...tool('italic')}><TextItalic size={17} /></button>
-              <button type="button" className="rte-btn" title="Garis bawah" {...tool('underline')}><TextUnderline size={17} /></button>
-              <button type="button" className="rte-btn" title="Judul bagian" {...tool('formatBlock', 'h2')}><TextHTwo size={17} /></button>
-              <span className="rte-sep" />
-              <button type="button" className="rte-btn" title="Poin-poin" {...tool('insertUnorderedList')}><ListBullets size={17} /></button>
-              <button type="button" className="rte-btn" title="Bernomor" {...tool('insertOrderedList')}><ListNumbers size={17} /></button>
-              <button type="button" className="rte-btn" title="Sisipkan tautan" onMouseDown={(e) => { e.preventDefault(); setLinkPrompt(true); }}><LinkIcon size={17} /></button>
-              <button type="button" className="rte-btn" title="Sisipkan gambar (maks 1,5 MB)" onMouseDown={(e) => { e.preventDefault(); fileRef.current?.click(); }}><ImageIcon size={17} /></button>
-              <button type="button" className="rte-btn" title="Hapus format" {...tool('removeFormat')}><Eraser size={17} /></button>
+            <div className="field">
+              <span>Isi catatan</span>
+              <SummernoteEditor
+                editorKey={note?.id ?? 'new'}
+                value={descHtml}
+                onChange={setDescHtml}
+                height={320}
+                placeholder="Tulis ide, referensi, atau draf di sini…"
+              />
             </div>
-
-            <div
-              ref={editorRef}
-              className="rte-area"
-              contentEditable
-              role="textbox"
-              aria-multiline="true"
-              aria-label="Isi catatan"
-              data-placeholder="Tulis ide, referensi, atau draf di sini… (klik gambar untuk mengubah ukurannya)"
-              onClick={onEditorClick}
-              suppressContentEditableWarning
-            />
-            {selImg && (
-              <div className="img-tools" style={{ left: Math.min(selImg.x, window.innerWidth - 260), top: selImg.y + 12 }} role="toolbar" aria-label="Ukuran gambar">
-                <span className="img-tools-label">Ukuran:</span>
-                <button type="button" onClick={() => resizeSelected(240)}>Kecil</button>
-                <button type="button" onClick={() => resizeSelected(420)}>Sedang</button>
-                <button type="button" onClick={() => resizeSelected(null)}>Penuh</button>
-              </div>
-            )}
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => { insertImage(e.target.files?.[0]); e.target.value = ''; }}
-            />
 
             <div className="note-opt-row">
               <label className="field" style={{ marginBottom: 0, flex: '1 1 200px' }}>
@@ -307,15 +198,6 @@ export default function NoteModal({ note, categories, defaultCategoryId, onClose
           danger
           onCancel={() => setConfirmDelete(false)}
           onConfirm={() => { setConfirmDelete(false); onDelete(note.id); }}
-        />
-      )}
-      {linkPrompt && (
-        <ConfirmDialog
-          title="Sisipkan tautan"
-          input={{ label: 'URL (https://…)', placeholder: 'https://contoh.com', defaultValue: 'https://' }}
-          confirmLabel="Sisipkan"
-          onCancel={() => setLinkPrompt(false)}
-          onConfirm={applyLink}
         />
       )}
     </div>

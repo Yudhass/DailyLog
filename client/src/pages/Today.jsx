@@ -9,6 +9,7 @@ import SyncStatus from '../components/SyncStatus.jsx';
 import { TaskBadges, TagList, sortByPriority } from '../components/TaskMeta.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { dateKey, formatTanggal } from '../utils/date.js';
+import { htmlToText } from '../utils/sanitize.js';
 
 const FILTERS = [
   { id: 'ALL', label: 'Semua' },
@@ -278,7 +279,7 @@ export default function Today() {
                           </strong>
                         </label>
                       </span>
-                      {t.description && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{t.description}</span>}
+                      {t.description && <span className="task-desc">{htmlToText(t.description, 140)}</span>}
                       <TaskBadges task={t} />
                       <TagList tags={t.tags} />
                       <span style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>

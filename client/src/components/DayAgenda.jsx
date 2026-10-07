@@ -1,5 +1,6 @@
 import { CalendarPlus } from '@phosphor-icons/react';
 import { formatTanggal } from '../utils/date.js';
+import { htmlToText } from '../utils/sanitize.js';
 import { TaskBadges, TagList } from './TaskMeta.jsx';
 
 export default function DayAgenda({ dateStr, tasks, onAdd, onEdit }) {
@@ -28,7 +29,7 @@ export default function DayAgenda({ dateStr, tasks, onAdd, onEdit }) {
               <span className="task-row">
                 <strong style={{ fontSize: 15 }}>{t.title}</strong>
               </span>
-              {t.description && <span className="task-desc">{t.description}</span>}
+              {t.description && <span className="task-desc">{htmlToText(t.description, 140)}</span>}
               <TaskBadges task={t} />
               <TagList tags={t.tags} />
               <span className="task-time mono">

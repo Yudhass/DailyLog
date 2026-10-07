@@ -8,6 +8,7 @@ import {
   akhirBulan, awalBulan, dateKey, formatRentang, formatTanggal,
   jumlahHari, keyOfTask, tambahBulan,
 } from '../utils/date.js';
+import { htmlToText } from '../utils/sanitize.js';
 
 const PRESETS = [
   { id: 'thisMonth', label: 'Bulan ini' },
@@ -147,7 +148,7 @@ export default function Report() {
     if (q) {
       list = list.filter((t) => {
         if ((t.title || '').toLowerCase().includes(q)) return true;
-        if ((t.description || '').toLowerCase().includes(q)) return true;
+        if (htmlToText(t.description, 500).toLowerCase().includes(q)) return true;
         if ((t.tags || '').toLowerCase().includes(q)) return true;
         return false;
       });
@@ -491,7 +492,7 @@ export default function Report() {
                             <span className="task-row">
                               <strong style={{ fontSize: 15 }}>{searching ? highlight(t.title, query.trim()) : t.title}</strong>
                             </span>
-                            {t.description && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{searching ? highlight(t.description, query.trim()) : t.description}</span>}
+                            {t.description && <span className="task-desc">{searching ? highlight(htmlToText(t.description, 140), query.trim()) : htmlToText(t.description, 140)}</span>}
                             <TaskBadges task={t} />
                             <TagList tags={t.tags} />
                             <span className="task-time mono">

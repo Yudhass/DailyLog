@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { formatTanggal } from '../utils/date.js';
+import { htmlToText } from '../utils/sanitize.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { TaskBadges, TagList } from '../components/TaskMeta.jsx';
 
@@ -49,7 +50,7 @@ export default function SharedView() {
                   <span className="task-row">
                     <strong style={{ fontSize: 15 }}>{t.title}</strong>
                   </span>
-                  {t.description && <span style={{ color: 'var(--muted)', fontSize: 13 }}>{t.description}</span>}
+                  {t.description && <span className="task-desc">{htmlToText(t.description, 140)}</span>}
                   <TaskBadges task={t} />
                   <TagList tags={t.tags} />
                   <span className="task-time mono">

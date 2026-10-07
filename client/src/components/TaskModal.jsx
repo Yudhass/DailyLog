@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Trash } from '@phosphor-icons/react';
 import { STATUS, dateKey } from '../utils/date.js';
+import { sanitizeHtml } from '../utils/sanitize.js';
 import { inputStyle } from './form.jsx';
 import TagInput from './TagInput.jsx';
 import ConfirmDialog from './ConfirmDialog.jsx';
+import SummernoteEditor from './SummernoteEditor.jsx';
 
 export const PRIORITY = {
   HIGH: { label: 'Tinggi', color: '#dc2626', bg: '#fee2e2' },
@@ -112,9 +114,11 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
     if (!form.title.trim()) return setError('Judul wajib diisi');
     const isNew = !task;
     const rec = isNew ? form.recurrence : 'NONE';
+    const rawDesc = sanitizeHtml(form.description || '');
+    const description = rawDesc.replace(/<[^>]*>/g, '').trim() ? rawDesc : '';
     onSave({
       title: form.title.trim(),
-      description: form.description.trim(),
+      description,
       logDate: form.logDate,
       startTime: form.startTime || null,
       endTime: form.endTime || null,
@@ -137,7 +141,7 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
 
   return (
     <div role="dialog" aria-modal="true" onClick={(e) => e.target === e.currentTarget && onClose()} className="modal-backdrop">
-      <form onSubmit={submit} className="modal-card">
+      <form onSubmit={submit} className="modal-card modal-wide task-modal">
         <div style={{ width: 38, height: 4, borderRadius: 8, background: 'var(--line)', margin: '-6px auto 16px' }} className="desktop-only" />
         <h2 style={{ fontSize: 20, marginBottom: 18 }}>{task ? 'Edit catatan' : 'Catatan baru'}</h2>
         {error && <p role="alert" style={{ color: 'var(--danger)', fontSize: 14, marginBottom: 12 }}>{error}</p>}
@@ -145,10 +149,16 @@ export default function TaskModal({ task, defaultDate, onClose, onSave, onDelete
           <span>Judul</span>
           <input style={inputStyle} required value={form.title} onChange={set('title')} autoFocus />
         </label>
-        <label className="field">
+        <div className="field">
           <span>Deskripsi</span>
-          <textarea style={{ ...inputStyle, minHeight: 76, resize: 'vertical' }} value={form.description} onChange={set('description')} />
-        </label>
+          <SummernoteEditor
+            editorKey={task?.id ?? 'new'}
+            value={form.description}
+            onChange={(html) => setForm((f) => ({ ...f, description: html }))}
+            height={240}
+            placeholder="Tulis deskripsi tugas… (bisa format teks, daftar, tautan, gambar)"
+          />
+        </div>
         <div className="field-grid">
           <label className="field">
             <span>Tanggal</span>

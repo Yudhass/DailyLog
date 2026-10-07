@@ -624,7 +624,15 @@ button.task-card:hover { transform: translateY(-1px); border-color: var(--green)
 .task-card[data-pri='MEDIUM'] { border-left-color: var(--pri-med); }
 .task-card[data-pri='LOW'] { border-left-color: var(--pri-low); }
 .task-row { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
-.task-desc { color: var(--muted); font-size: 13px; }
+.task-desc {
+  color: var(--muted);
+  font-size: 13px;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
 .task-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .task-actions { display: flex; gap: 8px; margin-left: auto; }
 .notice-error {
@@ -1209,7 +1217,7 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
 }
 
 /* --- rich text editor --- */
-.modal-wide { max-width: 640px; }
+.modal-wide { max-width: min(880px, 94vw); width: 100%; }
 .rte-toolbar {
   display: flex;
   align-items: center;
@@ -1332,7 +1340,7 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
 .btn-danger:active { transform: scale(0.97); }
 
 /* --- lembar catatan: modal besar + mode lihat --- */
-.modal-xl { max-width: min(1120px, 94vw); width: 100%; }
+.modal-xl { max-width: min(1200px, 94vw); width: 100%; }
 .note-sheet { color: #23251f; }
 .note-sheet .field > span { color: rgb(35 37 31 / 0.65); }
 .note-sheet .field input,
@@ -1515,7 +1523,96 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
 
 @media (max-width: 760px) {
   .confirm-card { padding: 18px 16px; }
-  .modal-xl { max-width: 560px; }
+  .modal-xl { max-width: 720px; }
   .note-sheet .rte-area { min-height: 200px; }
   .note-view-body { max-height: 60dvh; }
+}
+
+/* --- summernote (deskripsi task & isi catatan) --- */
+.summernote-wrap .note-editor.note-frame {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: none;
+  font-family: inherit;
+}
+.summernote-wrap .note-toolbar {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+  padding: 6px 8px;
+  min-height: 0;
+  height: auto;
+}
+.summernote-wrap .note-toolbar > .note-btn-group,
+.summernote-wrap .note-popover .note-toolbar > .note-btn-group {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 5px 0 0;
+}
+.summernote-wrap .note-toolbar > .note-btn-group:last-child { margin-right: 0; }
+.summernote-wrap .note-toolbar .note-btn {
+  padding: 6px 9px;
+  font-size: 13px;
+  margin: 0 1px;
+}
+.summernote-wrap .note-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  border-radius: 7px;
+}
+.summernote-wrap .note-btn:hover,
+.summernote-wrap .note-btn:focus {
+  background: var(--surface);
+  color: var(--ink);
+}
+.summernote-wrap .note-btn.active {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.summernote-wrap .note-editable {
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 12px 14px;
+}
+.summernote-wrap .note-editable img { max-width: 100%; height: auto; border-radius: 8px; }
+.summernote-wrap .note-editable a { color: var(--green); }
+.summernote-wrap .note-editable blockquote {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--green);
+  background: var(--surface-2);
+  border-radius: 0 8px 8px 0;
+}
+.summernote-wrap .note-statusbar { background: var(--surface-2); border-top: 1px solid var(--line); }
+.summernote-wrap .note-statusbar .note-resizebar { border-top: none; }
+.summernote-wrap .note-dropdown-menu,
+.summernote-wrap .note-modal-content {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.summernote-wrap .note-dropdown-item:hover { background: var(--surface-2); color: var(--ink); }
+.summernote-wrap .note-editing-area .note-codable {
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+}
+/* dialog & popover summernote harus di atas backdrop modal (60) & konfirmasi (80) */
+.note-modal-backdrop { z-index: 90 !important; }
+.note-modal { z-index: 95 !important; }
+.note-popover { z-index: 90 !important; }
+
+:root[data-theme="dark"] .summernote-wrap .note-btn:hover,
+:root[data-theme="dark"] .summernote-wrap .note-btn:focus { background: var(--surface-2); }
+:root[data-theme="dark"] .summernote-wrap .note-toolbar { background: var(--surface-2); }
+:root[data-theme="dark"] .summernote-wrap .note-editable { background: var(--surface); }
+
+/* modal tugas yang dilebarkan: beri napas lebih lega di layar besar */
+@media (min-width: 761px) {
+  .task-modal { padding: 30px 32px; }
 }
