@@ -2,13 +2,27 @@ import { Router } from 'express';
 import { Op } from 'sequelize';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-import { Task, taskMinutes } from '../db.js';
+import { Task, taskMinutes, parseTags } from '../db.js';
 import { authRequired } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authRequired);
 
-async function fetchRange(userId, from, to) {
+function parseTagsParam(raw) {
+  return String(raw || '')
+    .split(',')
+    .map((s) => s.trim().replace(/^#+/, ''))
+    .filter(Boolean)
+    .slice(0, 20);
+}
+
+function onlyWithTags(tasks, wanted) {
+  if (!wanted.length) return tasks;
+  const set = new Set(wanted.map((t) => t.toLowerCase()));
+  return tasks.filter((t) => parseTags(t.tags).some((tag) => set.has(tag.toLowerCase())));
+}
+
+async function fetchRange(userId, from, to, tags) {
   if (!from || !to) return null;
   const start = new Date(`${from}T00:00:00`);
   const end = new Date(`${to}T23:59:59.999`);
@@ -17,7 +31,7 @@ async function fetchRange(userId, from, to) {
     where: { userId, logDate: { [Op.between]: [start, end] } },
     order: [['logDate', 'ASC'], ['startTime', 'ASC']],
   });
-  return tasks;
+  return onlyWithTags(tasks, parseTagsParam(tags));
 }
 
 function fileName(prefix, from, to, ext) {
@@ -26,8 +40,8 @@ function fileName(prefix, from, to, ext) {
 }
 
 router.get('/pdf', async (req, res) => {
-  const { from, to } = req.query;
-  const tasks = await fetchRange(req.user.id, from, to);
+  const { from, to, tags } = req.query;
+  const tasks = await fetchRange(req.user.id, from, to, tags);
   if (!tasks) return res.status(400).json({ error: 'Parameter from & to (YYYY-MM-DD) diperlukan' });
 
   res.setHeader('Content-Type', 'application/pdf');
@@ -37,6 +51,8 @@ router.get('/pdf', async (req, res) => {
   doc.pipe(res);
   doc.fontSize(20).text('Laporan DailyLog', { continued: false });
   doc.fontSize(11).fillColor('#555').text(`Periode ${from} s/d ${to} — ${req.user.name || req.user.email}`);
+  const wanted = parseTagsParam(tags);
+  if (wanted.length) doc.fontSize(11).fillColor('#555').text(`Filter tag: ${wanted.map((t) => `#${t}`).join(', ')}`);
   doc.moveDown();
 
   const done = tasks.filter((t) => t.status === 'DONE').length;
@@ -61,8 +77,8 @@ router.get('/pdf', async (req, res) => {
 });
 
 router.get('/excel', async (req, res) => {
-  const { from, to } = req.query;
-  const tasks = await fetchRange(req.user.id, from, to);
+  const { from, to, tags } = req.query;
+  const tasks = await fetchRange(req.user.id, from, to, tags);
   if (!tasks) return res.status(400).json({ error: 'Parameter from & to (YYYY-MM-DD) diperlukan' });
 
   const wb = new ExcelJS.Workbook();

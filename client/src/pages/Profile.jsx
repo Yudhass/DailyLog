@@ -13,6 +13,10 @@ export default function Profile() {
   const navigate = useNavigate();
   const [name, setName] = useState(user?.name || '');
   const [password, setPassword] = useState('');
+  const [weekStart, setWeekStart] = useState(() => {
+    const n = Number(user?.weekStart);
+    return Number.isInteger(n) && n >= 0 && n <= 6 ? n : 1;
+  });
   const [linkCode, setLinkCode] = useState('');
   const [chatLinks, setChatLinks] = useState([]);
   const [pendingUnlink, setPendingUnlink] = useState(null);
@@ -21,7 +25,15 @@ export default function Profile() {
   async function onSubmit(e) {
     e.preventDefault();
     try {
-      const { data } = await api.put('/auth/profile', { name: name !== user.name ? name : undefined, password: password || undefined });
+      const payload = {};
+      if (name !== user.name) payload.name = name;
+      if (password) payload.password = password;
+      if (weekStart !== (user?.weekStart ?? 1)) payload.weekStart = weekStart;
+      if (!Object.keys(payload).length) {
+        toast.info('Tidak ada perubahan.');
+        return;
+      }
+      const { data } = await api.put('/auth/profile', payload);
       updateUser(data);
       setPassword('');
       toast.success('Profil diperbarui.');
@@ -43,6 +55,22 @@ export default function Profile() {
         <form onSubmit={onSubmit} className="panel">
           <Field label="Nama">
             <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} required />
+          </Field>
+          <Field label="Hari pertama dalam seminggu (kalender & laporan mingguan)">
+            <select
+              style={inputStyle}
+              value={weekStart}
+              onChange={(e) => setWeekStart(Number(e.target.value))}
+              aria-label="Hari pertama dalam seminggu"
+            >
+              <option value={1}>Senin</option>
+              <option value={2}>Selasa</option>
+              <option value={3}>Rabu</option>
+              <option value={4}>Kamis</option>
+              <option value={5}>Jumat</option>
+              <option value={6}>Sabtu</option>
+              <option value={0}>Minggu</option>
+            </select>
           </Field>
           <Field label="Password baru (kosongkan jika tidak diubah)">
             <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" minLength={6} />

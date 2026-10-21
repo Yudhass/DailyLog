@@ -8,7 +8,8 @@ import TaskModal from '../components/TaskModal.jsx';
 import QuickAdd from '../components/QuickAdd.jsx';
 import SyncStatus from '../components/SyncStatus.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { bulanTahun, dateKey, formatTanggal, keyOfTask } from '../utils/date.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { bulanTahun, dateKey, formatTanggal, keyOfTask, normalizeWeekStart } from '../utils/date.js';
 import { sortByPriority } from '../components/TaskMeta.jsx';
 
 const VIEWS = [
@@ -33,6 +34,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const toast = useToast();
+  const { user } = useAuth();
+  const weekStart = normalizeWeekStart(user?.weekStart ?? 1);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -163,7 +166,7 @@ export default function Dashboard() {
         {view === 'month' && (
           <div className="layout">
             <div className="layout-cal">
-              <MonthCalendar cursor={cursor} tasksByDay={tasksByDay} selected={selected} onSelect={setSelected} />
+              <MonthCalendar cursor={cursor} tasksByDay={tasksByDay} selected={selected} onSelect={setSelected} weekStart={weekStart} />
             </div>
             <div className="layout-side">
               <DayAgenda dateStr={selected} tasks={selectedTasks} onAdd={() => setModal({ task: null })} onEdit={(t) => setModal({ task: t })} />
@@ -171,7 +174,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {view === 'week' && <WeekView anchor={anchor} tasksByDay={tasksByDay} selected={selected} onSelect={setSelected} onEdit={(t) => setModal({ task: t })} />}
+        {view === 'week' && <WeekView anchor={anchor} tasksByDay={tasksByDay} selected={selected} onSelect={setSelected} onEdit={(t) => setModal({ task: t })} weekStart={weekStart} />}
       </main>
 
       {modal && <TaskModal task={modal.task} defaultDate={selected} onClose={() => setModal(null)} onSave={saveTask} onDelete={deleteTask} />}

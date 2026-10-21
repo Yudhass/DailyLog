@@ -13,9 +13,16 @@ function keyOf(d) {
   return `${y}-${m}-${day}`;
 }
 
-function mondayOf(d) {
+function normalizeWeekStart(v) {
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 0 || n > 6) return 1;
+  return n;
+}
+
+function startOfWeek(d, weekStart = 1) {
+  const ws = normalizeWeekStart(weekStart);
   const c = new Date(d);
-  const off = (c.getDay() + 6) % 7;
+  const off = (c.getDay() - ws + 7) % 7;
   c.setDate(c.getDate() - off);
   c.setHours(0, 0, 0, 0);
   return c;
@@ -76,15 +83,16 @@ router.get('/overview', async (req, res) => {
     for (const tag of parseTags(t.tags)) tagCount[tag] = (tagCount[tag] || 0) + 1;
   }
 
-  // Minggu ini vs minggu lalu (Senin-Minggu)
-  const thisMon = mondayOf(now);
-  const lastMon = new Date(thisMon);
-  lastMon.setDate(thisMon.getDate() - 7);
-  const nextMon = new Date(thisMon);
-  nextMon.setDate(thisMon.getDate() + 7);
+  // Minggu ini vs minggu lalu (mengikuti awal minggu di pengaturan akun)
+  const ws = normalizeWeekStart(req.user.weekStart);
+  const thisStart = startOfWeek(now, ws);
+  const lastStart = new Date(thisStart);
+  lastStart.setDate(thisStart.getDate() - 7);
+  const nextStart = new Date(thisStart);
+  nextStart.setDate(thisStart.getDate() + 7);
   const [thisWeek, lastWeek] = await Promise.all([
-    Task.count({ where: { userId: req.user.id, status: 'DONE', logDate: { [Op.between]: [thisMon, new Date(nextMon.getTime() - 1)] } } }),
-    Task.count({ where: { userId: req.user.id, status: 'DONE', logDate: { [Op.between]: [lastMon, new Date(thisMon.getTime() - 1)] } } }),
+    Task.count({ where: { userId: req.user.id, status: 'DONE', logDate: { [Op.between]: [thisStart, new Date(nextStart.getTime() - 1)] } } }),
+    Task.count({ where: { userId: req.user.id, status: 'DONE', logDate: { [Op.between]: [lastStart, new Date(thisStart.getTime() - 1)] } } }),
   ]);
 
   // 7 hari terakhir untuk grafik

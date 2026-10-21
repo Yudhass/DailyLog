@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeSlash } from '@phosphor-icons/react';
 import { inputStyle } from './form.jsx';
 
-export default function PasswordInput({ value, onChange, autoComplete = 'current-password', minLength, placeholder }) {
+export default function PasswordInput({ value, onChange, autoComplete = 'current-password', minLength, placeholder, required }) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -15,7 +15,7 @@ export default function PasswordInput({ value, onChange, autoComplete = 'current
         autoComplete={autoComplete}
         minLength={minLength}
         placeholder={placeholder}
-        required
+        required={required}
       />
       <button
         type="button"

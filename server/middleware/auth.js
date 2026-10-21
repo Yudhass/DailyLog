@@ -9,7 +9,7 @@ export async function authRequired(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findByPk(payload.id);
     if (!user) return res.status(401).json({ error: 'Akun tidak ditemukan. Silakan masuk lagi.' });
-    req.user = { id: user.id, name: user.name, email: user.email };
+    req.user = { id: user.id, name: user.name, email: user.email, weekStart: user.weekStart ?? 1 };
     next();
   } catch {
     res.status(401).json({ error: 'Token tidak valid atau kedaluwarsa' });

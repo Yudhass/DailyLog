@@ -6,7 +6,7 @@ import { authRequired } from '../middleware/auth.js';
 
 const router = Router();
 
-const pub = (u) => ({ id: u.id, name: u.name, email: u.email });
+const pub = (u) => ({ id: u.id, name: u.name, email: u.email, weekStart: u.weekStart ?? 1 });
 
 router.post('/register', async (req, res) => {
   const { name, email, password } = req.body || {};
@@ -32,12 +32,18 @@ router.post('/login', async (req, res) => {
 });
 
 router.put('/profile', authRequired, async (req, res) => {
-  const { name, password } = req.body || {};
+  const { name, password, weekStart } = req.body || {};
   const data = {};
   if (name) data.name = name;
   if (password) {
     if (password.length < 6) return res.status(400).json({ error: 'Password minimal 6 karakter' });
     data.password = await bcrypt.hash(password, 10);
+  }
+  if (weekStart !== undefined) {
+    const n = Number(weekStart);
+    if (!Number.isInteger(n) || n < 0 || n > 6)
+      return res.status(400).json({ error: 'Awal minggu tidak valid (0=Minggu … 6=Sabtu)' });
+    data.weekStart = n;
   }
   if (!Object.keys(data).length) return res.status(400).json({ error: 'Tidak ada perubahan' });
   const user = await User.findByPk(req.user.id);

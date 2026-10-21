@@ -10,6 +10,8 @@ import { useToast } from '../context/ToastContext.jsx';
 import { htmlToText } from '../utils/sanitize.js';
 
 const NONE = '__none__';
+// Maksimal note yang terlihat per kolom sebelum daftar di-scroll di dalam kolom.
+const VISIBLE_NOTES = 4;
 
 function fmtDate(iso) {
   try {
@@ -221,9 +223,18 @@ export default function Notes() {
     const d = dragRef.current;
     if (!d?.started) return;
     const board = boardRef.current;
+    const { x, y } = ptrRef.current;
+    // Gulir daftar di dalam kolom bila drag mendekati tepi atas/bawahnya —
+    // perlu karena daftar kini dibatasi ±4 kartu dan bisa di-scroll.
+    const under = document.elementFromPoint(x, y);
+    const listEl = under?.closest?.('.board-list');
+    if (listEl) {
+      const r = listEl.getBoundingClientRect();
+      if (y > r.bottom - 56) listEl.scrollTop += 16;
+      else if (y < r.top + 56) listEl.scrollTop -= 16;
+    }
     if (board) {
       const r = board.getBoundingClientRect();
-      const { x, y } = ptrRef.current;
       let dx = 0;
       let dy = 0;
       if (x > r.right - 56) dx = 16;
@@ -475,6 +486,10 @@ export default function Notes() {
                       </p>
                     )}
                   </div>
+
+                  {list.length > VISIBLE_NOTES && (
+                    <p className="board-more" aria-hidden="true">↓ Gulir daftar untuk melihat semua</p>
+                  )}
 
                   <button className="board-add" onClick={() => openEditor(null, col.id === NONE ? null : col.id)}>
                     <Plus size={15} weight="bold" /> Tambah note

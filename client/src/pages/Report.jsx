@@ -66,12 +66,20 @@ function highlight(text, q) {
   );
 }
 
+function splitTags(raw) {
+  return String(raw || '')
+    .split(',')
+    .map((s) => s.trim().replace(/^#+/, ''))
+    .filter(Boolean);
+}
+
 export default function Report() {
   const [preset, setPreset] = useState('thisMonth');
   const [from, setFrom] = useState(rangeOf('thisMonth')[0]);
   const [to, setTo] = useState(rangeOf('thisMonth')[1]);
   const [filter, setFilter] = useState('ALL');
   const [query, setQuery] = useState(''); // free-text search: judul, isi, tag
+  const [tagFilter, setTagFilter] = useState([]); // tampilkan hanya tag terpilih (kosong = semua)
   const [tasks, setTasks] = useState([]);
   const [overview, setOverview] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -143,6 +151,11 @@ export default function Report() {
   const daftar = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = tasks;
+    // Saring tag tertentu: tampilkan tugas yang punya minimal satu tag terpilih.
+    if (tagFilter.length > 0) {
+      const chosen = new Set(tagFilter);
+      list = list.filter((t) => splitTags(t.tags).some((tag) => chosen.has(tag)));
+    }
     // Free-text search: cocok ke judul, isi/deskripsi, atau tag — sama seperti Notes
     // (kategori, nama note, isi). Status tetap disaring lewat segmen filter.
     if (q) {
@@ -157,9 +170,31 @@ export default function Report() {
     const byDate = {};
     for (const t of list) (byDate[keyOfTask(t)] ||= []).push(t);
     return Object.entries(byDate).sort((a, b) => (a[0] < b[0] ? 1 : -1));
-  }, [tasks, filter, query]);
+  }, [tasks, filter, query, tagFilter]);
 
-  const searching = query.trim().length > 0;
+  // Daftar tugas yang tampil (pipih) — dipakai ekspor agar mengikuti filter aktif.
+  const tampil = useMemo(() => daftar.flatMap(([, list]) => list), [daftar]);
+
+  // Peta tag pada rentang aktif: total & selesai per tag, urut paling sering.
+  const petaTag = useMemo(() => {
+    const map = {};
+    for (const t of tasks) {
+      for (const tag of splitTags(t.tags)) {
+        map[tag] ||= { tag, total: 0, done: 0 };
+        map[tag].total += 1;
+        if (t.status === 'DONE') map[tag].done += 1;
+      }
+    }
+    return Object.values(map).sort((a, b) => b.total - a.total || a.tag.localeCompare(b.tag));
+  }, [tasks]);
+
+  const maksTag = useMemo(() => Math.max(1, ...petaTag.map((t) => t.total)), [petaTag]);
+
+  function toggleTag(tag) {
+    setTagFilter((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]));
+  }
+
+  const searching = query.trim().length > 0 || tagFilter.length > 0;
   const matchCount = useMemo(
     () => daftar.reduce((acc, [, list]) => acc + list.length, 0),
     [daftar],
@@ -171,32 +206,34 @@ export default function Report() {
 
   const onExportCsv = useCallback(() => {
     const header = 'Tanggal,Judul,Status,Prioritas,Tag,Mulai,Selesai\n';
-    const body = tasks
+    const body = tampil
       .map((t) => [keyOfTask(t), `"${t.title.replace(/"/g, '""')}"`, t.status, t.priority || '', `"${(t.tags || '').replace(/"/g, '""')}"`, t.startTime || '', t.endTime || ''].join(','))
       .join('\n');
     downloadBlob(header + body, `laporan-dailylog-${from}-sd-${to}.csv`, 'text/csv;charset=utf-8');
-    toast.success('CSV diunduh.');
-  }, [tasks, from, to, toast]);
+    toast.success(tagFilter.length ? `CSV diunduh (${tampil.length} catatan, tag terfilter).` : 'CSV diunduh.');
+  }, [tampil, from, to, tagFilter.length, toast]);
+
+  const tagParam = tagFilter.length ? tagFilter.join(',') : undefined;
 
   const onExportPdf = useCallback(async () => {
     try {
-      const { data } = await api.get('/export/pdf', { params: { from, to }, responseType: 'blob' });
+      const { data } = await api.get('/export/pdf', { params: { from, to, tags: tagParam }, responseType: 'blob' });
       downloadBlob(data, `laporan-dailylog-${from}-sd-${to}.pdf`, 'application/pdf');
       toast.success('PDF diunduh.');
     } catch {
       toast.error('Gagal mengunduh PDF.');
     }
-  }, [from, to, toast]);
+  }, [from, to, tagParam, toast]);
 
   const onExportExcel = useCallback(async () => {
     try {
-      const { data } = await api.get('/export/excel', { params: { from, to }, responseType: 'blob' });
+      const { data } = await api.get('/export/excel', { params: { from, to, tags: tagParam }, responseType: 'blob' });
       downloadBlob(data, `laporan-dailylog-${from}-sd-${to}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       toast.success('Excel diunduh.');
     } catch {
       toast.error('Gagal mengunduh Excel.');
     }
-  }, [from, to, toast]);
+  }, [from, to, tagParam, toast]);
 
   const onShare = useCallback(async () => {
     try {
@@ -242,9 +279,9 @@ export default function Report() {
             <p style={{ color: 'var(--muted)' }}>{formatRentang(from, to)}</p>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="pill-btn" onClick={onExportCsv} disabled={!tasks.length}>CSV</button>
-            <button className="pill-btn" onClick={onExportPdf} disabled={!tasks.length}>PDF</button>
-            <button className="pill-btn" onClick={onExportExcel} disabled={!tasks.length}>Excel</button>
+            <button className="pill-btn" onClick={onExportCsv} disabled={!tampil.length}>CSV</button>
+            <button className="pill-btn" onClick={onExportPdf} disabled={!tampil.length}>PDF</button>
+            <button className="pill-btn" onClick={onExportExcel} disabled={!tampil.length}>Excel</button>
             <button className="btn-primary" onClick={onShare}>Bagikan</button>
           </div>
         </div>
@@ -408,6 +445,70 @@ export default function Report() {
             )}
 
             <section className="panel">
+              <div className="panel-head">
+                <h2 style={{ fontSize: 17 }}>
+                  Peta tag
+                  {tagFilter.length > 0 && (
+                    <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 13 }}>
+                      {' '}• {tagFilter.length} tag dipilih
+                    </span>
+                  )}
+                </h2>
+                {tagFilter.length > 0 && (
+                  <button type="button" className="pill-btn" onClick={() => setTagFilter([])}>
+                    Tampilkan semua
+                  </button>
+                )}
+              </div>
+              {petaTag.length === 0 ? (
+                <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 8 }}>
+                  Belum ada tag pada rentang ini. Tambahkan tag (mis. kerja, belajar) saat mencatat agar mudah dipetakan.
+                </p>
+              ) : (
+                <>
+                  <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 4 }}>
+                    Ketuk tag untuk hanya menampilkan catatan dengan tag tersebut. Ekspor (CSV/PDF/Excel) mengikuti tag yang dipilih.
+                  </p>
+                  <div className="tag-map" role="group" aria-label="Saring tag">
+                    {petaTag.map((tg) => {
+                      const aktif = tagFilter.includes(tg.tag);
+                      return (
+                        <button
+                          key={tg.tag}
+                          type="button"
+                          className="tag-chip-btn"
+                          aria-pressed={aktif}
+                          onClick={() => toggleTag(tg.tag)}
+                          title={`${tg.done}/${tg.total} selesai`}
+                        >
+                          #{tg.tag} <span className="mono">×{tg.total}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+                    {petaTag.slice(0, 8).map((tg) => (
+                      <div key={tg.tag}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}>
+                          <span style={{ fontWeight: 600 }}>#{tg.tag}</span>
+                          <span className="mono" style={{ color: 'var(--muted)' }}>
+                            {tg.done}/{tg.total} selesai
+                          </span>
+                        </div>
+                        <div className="tag-meter" role="img" aria-label={`Tag ${tg.tag}: ${tg.done} dari ${tg.total} selesai`}>
+                          <span style={{ width: `${tg.total ? Math.round((tg.done / tg.total) * 100) : 0}%`, opacity: tagFilter.length && !tagFilter.includes(tg.tag) ? 0.3 : 1 }} />
+                        </div>
+                        <div className="tag-meter" role="img" aria-label={`Tag ${tg.tag}: ${tg.total} dari ${maksTag} catatan terbanyak`} style={{ marginTop: 4, opacity: 0.55 }}>
+                          <span style={{ width: `${Math.max(4, Math.round((tg.total / maksTag) * 100))}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className="panel">
               <h2 style={{ fontSize: 17, marginBottom: 4 }}>Catatan per hari</h2>
               <p style={{ color: 'var(--muted)', fontSize: 14 }}>
                 {perHari.length
@@ -435,7 +536,9 @@ export default function Report() {
                   Rincian catatan
                   {searching && (
                     <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 13 }}>
-                      {' '}• {matchCount} hasil untuk &ldquo;{query.trim()}&rdquo;
+                      {' '}• {matchCount} hasil
+                      {tagFilter.length > 0 && ` • tag: ${tagFilter.map((t) => `#${t}`).join(', ')}`}
+                      {query.trim() && ` • “${query.trim()}”`}
                     </span>
                   )}
                 </h2>
@@ -470,11 +573,20 @@ export default function Report() {
                 <div className="empty" style={{ marginTop: 16 }}>
                   {searching ? (
                     <>
-                      <p>Tidak ada catatan yang cocok dengan &ldquo;{query.trim()}&rdquo;.</p>
-                      <p style={{ fontSize: 13 }}>Coba kata kunci lain, atau ubah status / rentang tanggal.</p>
-                      <button type="button" className="pill-btn" onClick={() => setQuery('')}>
-                        Hapus pencarian
-                      </button>
+                      <p>Tidak ada catatan yang cocok dengan filter aktif.</p>
+                      <p style={{ fontSize: 13 }}>Coba kata kunci lain, ubah status / tag, atau ubah rentang tanggal.</p>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {tagFilter.length > 0 && (
+                          <button type="button" className="pill-btn" onClick={() => setTagFilter([])}>
+                            Tampilkan semua tag
+                          </button>
+                        )}
+                        {query && (
+                          <button type="button" className="pill-btn" onClick={() => setQuery('')}>
+                            Hapus pencarian
+                          </button>
+                        )}
+                      </div>
                     </>
                   ) : (
                     <p>{tasks.length ? 'Tidak ada catatan dengan status ini.' : 'Belum ada catatan pada rentang ini. Ubah rentang tanggal atau tambahkan catatan baru.'}</p>

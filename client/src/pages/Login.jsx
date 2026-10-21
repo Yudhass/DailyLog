@@ -42,7 +42,7 @@ export default function Login() {
           <input style={inputStyle} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="nama@email.com" />
         </Field>
         <Field label="Password">
-          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
         </Field>
         <PrimaryButton disabled={loading}>{loading ? 'Memproses…' : 'Masuk'}</PrimaryButton>
         <p className="auth-switch">

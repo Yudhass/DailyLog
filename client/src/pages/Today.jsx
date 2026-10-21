@@ -261,13 +261,28 @@ export default function Today() {
               <ul className="task-list">
                 {daftar.map((t) => (
                   <li key={t.id}>
-                    <div className="task-card" style={{ cursor: 'default' }}>
+                    <div
+                      className="task-card is-clickable"
+                      data-pri={t.priority || 'MEDIUM'}
+                      onClick={() => setModal({ task: t })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setModal({ task: t });
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Lihat detail: ${t.title}`}
+                    >
                       <span className="task-row">
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                           <input
                             type="checkbox"
                             checked={t.status === 'DONE'}
                             onChange={() => toggleDone(t)}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
                             aria-label={`Tandai selesai: ${t.title}`}
                           />
                           <strong style={{
@@ -277,16 +292,16 @@ export default function Today() {
                           }}>
                             {t.title}
                           </strong>
-                        </label>
+                        </span>
                       </span>
                       {t.description && <span className="task-desc">{htmlToText(t.description, 140)}</span>}
                       <TaskBadges task={t} />
                       <TagList tags={t.tags} />
                       <span style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
-                        <button className="icon-btn" style={{ width: 34, height: 34 }} onClick={() => setModal({ task: t })} aria-label={`Edit ${t.title}`} title="Edit">
+                        <button className="icon-btn" style={{ width: 34, height: 34 }} onClick={(e) => { e.stopPropagation(); setModal({ task: t }); }} aria-label={`Edit ${t.title}`} title="Edit">
                           <PencilSimple size={16} />
                         </button>
-                        <button className="icon-btn danger" style={{ width: 34, height: 34 }} onClick={() => setPendingDelete(t)} aria-label={`Hapus ${t.title}`} title="Hapus">
+                        <button className="icon-btn danger" style={{ width: 34, height: 34 }} onClick={(e) => { e.stopPropagation(); setPendingDelete(t); }} aria-label={`Hapus ${t.title}`} title="Hapus">
                           <Trash size={16} />
                         </button>
                       </span>

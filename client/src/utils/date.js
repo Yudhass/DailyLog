@@ -9,9 +9,34 @@ export function keyOfTask(task) {
   return dateKey(new Date(task.logDate));
 }
 
-export function monthMatrix(year, month) {
+// 0=Min, 1=Sen, ..., 6=Sab (mengikuti Date.getDay()). Default 1 (Senin).
+export function normalizeWeekStart(v) {
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 0 || n > 6) return 1;
+  return n;
+}
+
+// Nama hari pendek diurut sesuai awal minggu. Indeks 0 = getDay() Minggu.
+const DOW_PENDEK = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+export function orderedDowNames(weekStart = 1) {
+  const ws = normalizeWeekStart(weekStart);
+  return Array.from({ length: 7 }, (_, i) => DOW_PENDEK[(ws + i) % 7]);
+}
+
+export function startOfWeek(d, weekStart = 1) {
+  const ws = normalizeWeekStart(weekStart);
+  const c = new Date(d);
+  const off = (c.getDay() - ws + 7) % 7;
+  c.setDate(c.getDate() - off);
+  c.setHours(0, 0, 0, 0);
+  return c;
+}
+
+export function monthMatrix(year, month, weekStart = 1) {
+  const ws = normalizeWeekStart(weekStart);
   const first = new Date(year, month, 1);
-  const offset = (first.getDay() + 6) % 7; // Senin = 0
+  const offset = (first.getDay() - ws + 7) % 7;
   const start = new Date(year, month, 1 - offset);
   return Array.from({ length: 42 }, (_, i) => {
     const d = new Date(start);
@@ -20,10 +45,8 @@ export function monthMatrix(year, month) {
   });
 }
 
-export function weekDays(anchor) {
-  const offset = (anchor.getDay() + 6) % 7;
-  const start = new Date(anchor);
-  start.setDate(anchor.getDate() - offset);
+export function weekDays(anchor, weekStart = 1) {
+  const start = startOfWeek(anchor, weekStart);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start);
     d.setDate(start.getDate() + i);

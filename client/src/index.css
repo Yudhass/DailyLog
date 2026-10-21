@@ -395,7 +395,7 @@ input, select, textarea { font: inherit; color: inherit; }
   overflow-x: auto;
   min-width: 0;
 }
-.bar-col { flex: 1 0 14px; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.bar-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
 .bar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; }
 .bar-fill { width: 100%; background: var(--green); border-radius: 3px 3px 0 0; min-height: 2px; transition: height 0.3s ease; }
 .bar-label { color: var(--muted); font-size: 10px; }
@@ -502,20 +502,24 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .cal-dow-row {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
 .cal-dow {
   padding: 10px 0;
   text-align: center;
-  font-size: 12px;
+  font-size: clamp(10px, 2.6vw, 12px);
   font-weight: 600;
   color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 .cal-cell {
   border: none;
@@ -528,6 +532,9 @@ input, select, textarea { font: inherit; color: inherit; }
   flex-direction: column;
   gap: 4px;
   aspect-ratio: 1 / 0.82;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   transition: background-color 0.15s ease;
 }
 .cal-cell:hover { background: var(--surface-2); }
@@ -542,17 +549,23 @@ input, select, textarea { font: inherit; color: inherit; }
   border-radius: 10px;
 }
 .cal-cell[data-today='true'] .cal-num { background: var(--green); color: var(--on-green); font-weight: 700; }
-.cal-dots { display: flex; gap: 3px; margin-top: auto; align-items: center; }
-.cal-done { color: var(--green); font-size: 10px; font-weight: 600; }
+.cal-dots { display: flex; gap: 3px; margin-top: auto; align-items: center; min-width: 0; overflow: hidden; }
+.cal-done { color: var(--green); font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* --- week view --- */
 .week-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 10px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  padding-bottom: 4px;
+  min-width: 0;
+}
+@media (min-width: 761px) {
+  .week-grid {
+    grid-template-columns: repeat(7, minmax(150px, 1fr));
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
 }
 .week-col {
   border: 1px solid var(--line);
@@ -561,6 +574,7 @@ input, select, textarea { font: inherit; color: inherit; }
   box-shadow: var(--shadow-sm);
   padding: 12px;
   min-height: 200px;
+  min-width: 0;
   scroll-snap-align: start;
 }
 .week-col[data-selected='true'] { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green), var(--shadow-sm); }
@@ -580,6 +594,8 @@ input, select, textarea { font: inherit; color: inherit; }
   font-size: 13px;
   display: grid;
   gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
 .week-task:hover { border-color: var(--green); transform: translateY(-1px); }
@@ -620,6 +636,8 @@ input, select, textarea { font: inherit; color: inherit; }
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 button.task-card:hover { transform: translateY(-1px); border-color: var(--green); box-shadow: var(--shadow-sm); }
+.task-card.is-clickable { cursor: pointer; }
+.task-card.is-clickable:hover { transform: translateY(-1px); border-color: var(--green); box-shadow: var(--shadow-sm); }
 .task-card[data-pri='HIGH'] { border-left-color: var(--pri-high); }
 .task-card[data-pri='MEDIUM'] { border-left-color: var(--pri-med); }
 .task-card[data-pri='LOW'] { border-left-color: var(--pri-low); }
@@ -918,8 +936,8 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   }
 
   .bars { height: 90px; gap: 2px; }
-  .bar-col { gap: 3px; flex: 0 0 18px; }
-  .bar-col:nth-child(even) .bar-label { visibility: hidden; }
+  /* Semua kolom tanggal tetap sama lebar & label tetap tampil di layar kecil. */
+  .bar-col { gap: 3px; flex: 1 0 0; min-width: 0; }
   .bar-label { font-size: 9px; }
   .page-head .pill-btn, .page-head .btn-primary { padding: 8px 13px; font-size: 13px; }
   .page-head { flex-direction: column; align-items: stretch; }
@@ -943,8 +961,17 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   .panel-head .search-box input { font-size: 16px; }
   .panel-head .seg { width: 100%; }
   .report-controls { grid-template-columns: 1fr; gap: 12px; }
-  .date-range { grid-template-columns: 1fr; margin-top: 12px; }
-  .week-grid { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
+  /* Preset rentang jadi 2x2 agar semua tombol sama besar di layar kecil. */
+  .report-controls .seg { display: grid; grid-template-columns: 1fr 1fr; }
+  .report-controls .seg button { width: 100%; }
+  .date-range { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 0; }
+  .date-range .field { min-width: 0; }
+  .date-range .field input { width: 100%; min-width: 0; }
+  /* Tampilan minggu ditumpuk vertikal — 7 kolom sama lebar tanpa scroll horizontal. */
+  .week-grid { grid-template-columns: 1fr; overflow-x: visible; scroll-snap-type: none; }
+  .week-col { min-height: 0; }
+  .cal-cell { padding: 4px 3px; aspect-ratio: 1 / 1; min-width: 0; }
+  .cal-num { width: 22px; height: 22px; font-size: 12px; }
 }
 
 @keyframes sheet-rise {
@@ -955,6 +982,9 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
 /* Layar sangat kecil (≤380px): cegah overflow horizontal */
 @media (max-width: 380px) {
   .container { padding-inline: 8px; }
+  .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .month-nav input[type='date'] { max-width: 100%; min-width: 0; }
+  .date-range { grid-template-columns: 1fr 1fr; gap: 6px; }
   .page-actions .search-box,
   .panel-head .search-box { min-width: 0; }
   .auth-grid { padding-top: 60px; gap: 16px; padding-inline: 8px; }
@@ -1087,17 +1117,31 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   flex-direction: column;
   gap: 10px;
   min-height: 60px;
+  /* Batas ±4 kartu note agar kolom tidak memanjang sendiri;
+     selebihnya di-scroll di dalam kolom (semua breakpoint). */
+  max-height: min(560px, 62dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: 10px;
   /* Bidang daftar putih di dalam kolom (kartu note tetap warna-warni). */
   background: #fff;
   border: 1px solid var(--line);
   padding: 10px;
-  /* Sembunyikan scrollbar di dalam kolom — daftar tetap bisa di-scroll
-     (sentuh, roda mouse, dan seret kartu). */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  /* Scrollbar tipis agar keter-scroll-an daftar terlihat. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
 }
-.board-list::-webkit-scrollbar { display: none; }
+.board-list::-webkit-scrollbar { width: 6px; }
+.board-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+.board-list::-webkit-scrollbar-track { background: transparent; }
+/* Petunjuk bahwa daftar kolom bisa di-scroll (muncul bila isi > 4 note). */
+.board-more {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
 .board-empty {
   color: var(--muted);
   font-size: 13px;
@@ -1289,24 +1333,18 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-/* layar besar (desktop): kanban horizontal scroll */
+/* layar besar (desktop): grid 4 kolom, kategori ke-5 dst. turun ke baris baru */
 @media (min-width: 1024px) {
   .board {
-    display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
     padding-bottom: 10px;
   }
   .board-col {
-    flex: 0 0 320px;
     max-height: calc(100dvh - 250px);
     min-height: 240px;
-    scroll-snap-align: start;
   }
-  .board-list { overflow-y: auto; }
-  .board-new-btn { flex: 0 0 240px; }
-  .board-new { flex: 0 0 320px; }
 }
 
 /* --- dialog konfirmasi/prompt kustom --- */
@@ -1377,7 +1415,15 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
 }
 .note-view-body p { margin: 0 0 10px; }
 .note-view-body h1, .note-view-body h2, .note-view-body h3 { margin: 14px 0 8px; }
-.note-view-body ul, .note-view-body ol { margin: 0 0 10px 22px; }
+.note-view-body h1 { font-size: 1.6em; }
+.note-view-body h2 { font-size: 1.4em; }
+.note-view-body h3 { font-size: 1.2em; }
+.note-view-body h4, .note-view-body h5, .note-view-body h6 { margin: 12px 0 6px; }
+.note-view-body h4 { font-size: 1.05em; }
+.note-view-body h5 { font-size: 0.95em; }
+.note-view-body h6 { font-size: 0.85em; color: rgb(35 37 31 / 0.7); }
+.note-view-body ul, .note-view-body ol { margin: 0 0 10px 22px; padding: 0; }
+.note-view-body li { margin: 2px 0; }
 .note-view-body blockquote {
   margin: 0 0 10px;
   padding: 8px 12px;
@@ -1385,7 +1431,52 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   background: rgb(255 255 255 / 0.45);
   border-radius: 0 8px 8px 0;
 }
+.note-view-body pre {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgb(35 37 31 / 0.06);
+  border: 1px solid rgb(35 37 31 / 0.12);
+  overflow-x: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.note-view-body code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.88em;
+  background: rgb(35 37 31 / 0.07);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.note-view-body pre code { background: transparent; padding: 0; }
+.note-view-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 14px;
+  background: rgb(255 255 255 / 0.55);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.note-view-body th, .note-view-body td {
+  border: 1px solid rgb(35 37 31 / 0.2);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.note-view-body th { background: rgb(35 37 31 / 0.07); font-weight: 700; }
+.note-view-body hr { border: none; border-top: 1px solid rgb(35 37 31 / 0.2); margin: 12px 0; }
 .note-view-body img { max-width: 100%; height: auto; border-radius: 8px; }
+.note-view-body figure { margin: 0 0 10px; }
+.note-view-body figcaption { font-size: 12px; opacity: 0.7; text-align: center; margin-top: 4px; }
+.note-view-body iframe, .note-view-body video {
+  max-width: 100%;
+  border-radius: 8px;
+  display: block;
+  margin: 0 0 10px;
+}
 .note-view-body a { color: var(--green-strong); font-weight: 600; }
 .note-view-empty { color: rgb(35 37 31 / 0.55); font-size: 14px; margin-top: 10px; }
 .note-view-btn { background: rgb(255 255 255 / 0.6); }
@@ -1521,6 +1612,27 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   margin-top: 2px;
 }
 
+/* --- tag map (report) --- */
+.tag-map { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.tag-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+.tag-chip-btn:hover { border-color: var(--green); color: var(--green); }
+.tag-chip-btn[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.tag-chip-btn .mono { font-size: 11px; opacity: 0.75; }
+.tag-meter { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.tag-meter > span { display: block; height: 100%; background: var(--green); border-radius: 999px; }
+
 @media (max-width: 760px) {
   .confirm-card { padding: 18px 16px; }
   .modal-xl { max-width: 720px; }
@@ -1543,11 +1655,15 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   padding: 6px 8px;
   min-height: 0;
   height: auto;
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 .summernote-wrap .note-toolbar > .note-btn-group,
 .summernote-wrap .note-popover .note-toolbar > .note-btn-group {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   margin: 0 5px 0 0;
 }
 .summernote-wrap .note-toolbar > .note-btn-group:last-child { margin-right: 0; }
@@ -1587,6 +1703,40 @@ select:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px 
   background: var(--surface-2);
   border-radius: 0 8px 8px 0;
 }
+.summernote-wrap .note-editable h1 { font-size: 1.6em; }
+.summernote-wrap .note-editable h2 { font-size: 1.4em; }
+.summernote-wrap .note-editable h3 { font-size: 1.2em; }
+.summernote-wrap .note-editable h4 { font-size: 1.05em; }
+.summernote-wrap .note-editable pre {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  overflow-x: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.summernote-wrap .note-editable code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.88em;
+  background: var(--surface-2);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.summernote-wrap .note-editable table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+.summernote-wrap .note-editable th, .summernote-wrap .note-editable td {
+  border: 1px solid var(--line);
+  padding: 6px 10px;
+}
+.summernote-wrap .note-editable th { background: var(--surface-2); }
+.summernote-wrap .note-editable hr { border: none; border-top: 1px solid var(--line); margin: 10px 0; }
+.summernote-wrap .note-editable iframe, .summernote-wrap .note-editable video { max-width: 100%; }
 .summernote-wrap .note-statusbar { background: var(--surface-2); border-top: 1px solid var(--line); }
 .summernote-wrap .note-statusbar .note-resizebar { border-top: none; }
 .summernote-wrap .note-dropdown-menu,

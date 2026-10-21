@@ -51,13 +51,39 @@ export default function SummernoteEditor({
       height,
       dialogsInBody: true,
       followingToolbar: false,
-      toolbar: [
-        ['font', ['bold', 'italic', 'underline', 'clear']],
-        ['color', ['color']],
-        ['para', ['ul', 'ol', 'paragraph']],
-        ['insert', ['link', 'picture']],
-        ['view', ['codeview']],
+      styleTags: ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre'],
+      fontNames: [
+        'Inter', 'Arial', 'Helvetica', 'Tahoma', 'Verdana',
+        'Times New Roman', 'Georgia', 'Courier New', 'Comic Sans MS',
       ],
+      fontSizes: ['8', '9', '10', '11', '12', '14', '16', '18', '24', '36', '48', '64'],
+      lineHeights: ['1.0', '1.2', '1.4', '1.5', '1.6', '1.8', '2.0', '3.0'],
+      // Tampilkan semua tools tanpa batasan: undo/redo, gaya, font lengkap,
+      // ukuran, warna, paragraf, tabel, sisipan media, dan tampilan.
+      toolbar: [
+        ['history', ['undo', 'redo']],
+        ['style', ['style']],
+        ['font', ['bold', 'italic', 'underline', 'strikethrough', 'subscript', 'superscript', 'clear']],
+        ['fontname', ['fontname']],
+        ['fontsize', ['fontsize']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol', 'paragraph', 'height']],
+        ['table', ['table']],
+        ['insert', ['link', 'picture', 'video', 'hr']],
+        ['view', ['fullscreen', 'codeview', 'help']],
+      ],
+      popover: {
+        image: [
+          ['image', ['resizeFull', 'resizeHalf', 'resizeQuarter', 'resizeNone']],
+          ['float', ['floatLeft', 'floatRight', 'floatNone']],
+          ['remove', ['removeMedia']],
+        ],
+        link: [['link', ['linkDialogShow', 'unlink']]],
+        table: [
+          ['add', ['addRowDown', 'addRowUp', 'addColLeft', 'addColRight']],
+          ['delete', ['deleteRow', 'deleteCol', 'deleteTable']],
+        ],
+      },
       callbacks: {
         onInit() {
           try {

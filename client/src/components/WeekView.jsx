@@ -1,9 +1,9 @@
-import { STATUS, dateKey, weekDays } from '../utils/date.js';
+import { STATUS, dateKey, normalizeWeekStart, orderedDowNames, weekDays } from '../utils/date.js';
 
-const HARI = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-
-export default function WeekView({ anchor, tasksByDay, selected, onSelect, onEdit }) {
-  const days = weekDays(anchor);
+export default function WeekView({ anchor, tasksByDay, selected, onSelect, onEdit, weekStart = 1 }) {
+  const ws = normalizeWeekStart(weekStart);
+  const hari = orderedDowNames(ws);
+  const days = weekDays(anchor, ws);
   const today = dateKey(new Date());
   return (
     <div className="week-grid">
@@ -18,7 +18,7 @@ export default function WeekView({ anchor, tasksByDay, selected, onSelect, onEdi
             data-today={key === today}
           >
             <button onClick={() => onSelect(key)} className="week-head" aria-label={key}>
-              <span className="week-dow">{HARI[i]}</span>
+              <span className="week-dow">{hari[i]}</span>
               <span className="week-num mono">{d.getDate()}</span>
             </button>
             <ul className="week-tasks">

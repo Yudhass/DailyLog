@@ -43,7 +43,7 @@ export default function Register() {
           <input style={inputStyle} type="email" required value={form.email} onChange={set('email')} autoComplete="email" placeholder="nama@email.com" />
         </Field>
         <Field label="Password">
-          <PasswordInput value={form.password} onChange={set('password')} autoComplete="new-password" minLength={6} placeholder="Minimal 6 karakter" />
+          <PasswordInput value={form.password} onChange={set('password')} autoComplete="new-password" minLength={6} placeholder="Minimal 6 karakter" required />
         </Field>
         <PrimaryButton disabled={loading}>{loading ? 'Memproses…' : 'Daftar'}</PrimaryButton>
         <p className="auth-switch">

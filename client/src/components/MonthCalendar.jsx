@@ -1,15 +1,15 @@
-import { STATUS, dateKey, monthMatrix } from '../utils/date.js';
+import { STATUS, dateKey, monthMatrix, normalizeWeekStart, orderedDowNames } from '../utils/date.js';
 
-const HARI = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-
-export default function MonthCalendar({ cursor, tasksByDay, selected, onSelect }) {
-  const cells = monthMatrix(cursor.getFullYear(), cursor.getMonth());
+export default function MonthCalendar({ cursor, tasksByDay, selected, onSelect, weekStart = 1 }) {
+  const ws = normalizeWeekStart(weekStart);
+  const hari = orderedDowNames(ws);
+  const cells = monthMatrix(cursor.getFullYear(), cursor.getMonth(), ws);
   const today = dateKey(new Date());
 
   return (
     <div className="cal-shell">
       <div className="cal-dow-row">
-        {HARI.map((h) => (
+        {hari.map((h) => (
           <div key={h} className="cal-dow">{h}</div>
         ))}
       </div>

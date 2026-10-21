@@ -56,6 +56,8 @@ function defineModels(target) {
       name: { type: DataTypes.STRING, allowNull: false },
       email: { type: DataTypes.STRING, allowNull: false, unique: true },
       password: { type: DataTypes.STRING, allowNull: false },
+      // Awal minggu per akun: 0=Min, 1=Sen, ..., 6=Sab (mengikuti Date.getDay()).
+      weekStart: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 1 },
     },
     { tableName: 'users' }
   );
@@ -261,6 +263,11 @@ async function columnExists(table, column) {
 }
 
 async function migrate() {
+  // Preferensi akun: awal minggu (0=Min..6=Sab, default 1=Senin).
+  if (!(await columnExists('users', 'weekStart'))) {
+    await sequelize.query('ALTER TABLE `users` ADD COLUMN `weekStart` TINYINT NOT NULL DEFAULT 1');
+    console.log('Migrasi: kolom users.weekStart ditambahkan.');
+  }
   // Kolom baru tabel tasks (kompatibel MySQL 5.1, charset utf8)
   const additions = [
     ['priority', "ENUM('HIGH','MEDIUM','LOW') NOT NULL DEFAULT 'MEDIUM'"],
